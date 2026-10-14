@@ -8,10 +8,10 @@ def adb(*args):
     return subprocess.check_output(['adb', *args])
 
 def snapshot(name):
-    adb('shell', 'uiautomator', 'dump', '/sdcard/window.xml')
+    (OUT / (name + '.png')).write_bytes(adb('exec-out', 'screencap', '-p'))
+    adb('shell', 'am', 'instrument', '-w', '-e', 'output', '/sdcard/window.xml', 'com.oriontv.danmaku.inspect/.Inspector')
     data = adb('shell', 'cat', '/sdcard/window.xml')
     (OUT / (name + '.xml')).write_bytes(data)
-    (OUT / (name + '.png')).write_bytes(adb('exec-out', 'screencap', '-p'))
     nodes = ET.fromstring(data).iter('node')
     text = ' '.join(n.get('content-desc', '') + ' ' + n.get('text', '') for n in nodes)
     match = re.search(r'PROBE loaded=(true|false) playing=(true|false) position=(\d+)', text)
@@ -19,6 +19,7 @@ def snapshot(name):
     return dict(loaded=match[1] == 'true', playing=match[2] == 'true', position=int(match[3]))
 
 try:
+    adb('install', '-r', '-g', 'test-results/inspector/inspector.apk')
     adb('install', '-r', 'artifacts/OrionTV-Danmaku-e2e.apk')
     adb('logcat', '-c')
     adb('shell', 'am', 'start', '-W', '-a', 'android.intent.action.VIEW', '-d', 'oriontv-danmaku://danmaku-test', 'com.oriontv.danmaku.dev')
@@ -43,4 +44,5 @@ try:
     assert sought['position'] >= resumed['position'] + 9000, sought
     (OUT / 'result.json').write_text(json.dumps({'passed': True, 'nativeVideo': True, 'pause': True, 'resume': True, 'remoteSeek': True, 'states': [playing, paused, stable, resumed, sought]}, indent=2))
 finally:
+    (OUT / 'failure-or-final.png').write_bytes(adb('exec-out', 'screencap', '-p'))
     (OUT / 'logcat.txt').write_bytes(adb('logcat', '-d'))
