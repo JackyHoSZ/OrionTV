@@ -21,10 +21,18 @@ def snapshot(name):
  badge=re.search(r'PROBE loaded=\S+.*? loading=(?:true|false)',text);assert badge,text[:300]
  fields=dict(re.findall(r'(\w+)=(\S+)',badge[0]))
  parsed={k:(True if v=='true' else False if v=='false' else float(v)) for k,v in fields.items()}
+ parsed['capturedAt']=time.time()
  parsed['focus']=[n.get('content-desc') for n in root.iter('node') if n.get('focused')=='true']
  parsed['message']=next((n.get('content-desc')[15:] for n in root.iter('node') if n.get('content-desc','').startswith('DANMAKU_STATUS ')),'')
- (OUT/(name+'.json')).write_text(json.dumps(parsed,indent=2));print(name,parsed)
+ (OUT/(name+'.json')).write_text(json.dumps(parsed,indent=2));print(name,parsed,flush=True)
  return parsed
+def wait_state(name,predicate,timeout=40):
+ deadline=time.monotonic()+timeout
+ state=snapshot(name)
+ while not predicate(state) and time.monotonic()<deadline:
+  time.sleep(1);state=snapshot(name)
+ assert predicate(state),state
+ return state
 server=subprocess.Popen(['python3','scripts/danmaku-fixture-server.py'],stdout=subprocess.DEVNULL,stderr=subprocess.PIPE)
 try:
  time.sleep(1)
@@ -39,15 +47,15 @@ try:
   time.sleep(2);playing=snapshot('01-playing')
  assert playing['loaded'] and playing['playing'] and playing['comments']==10000 and playing['match']==2 and 0<playing['active']<=4,playing
  press('player-pause');time.sleep(3)
- paused=snapshot('02-paused');assert not paused['playing'],paused
+ paused=wait_state('02-paused',lambda s:not s['intent'] and not s['playing'])
  time.sleep(2);stable=snapshot('03-paused-stable');assert abs(stable['position']-paused['position'])<200,(paused,stable)
- press('probe-forward');sought=snapshot('04-paused-seek');assert not sought['playing'] and sought['position']>=stable['position']+9000,(stable,sought)
- press('probe-back');rewound=snapshot('05-paused-rewind');assert abs(rewound['position']-stable['position'])<300,(stable,rewound)
- press('player-pause');resumed=snapshot('06-resumed');assert resumed['playing'],resumed
- press('probe-rate');rate=snapshot('07-rate');assert rate['rate']==2,rate
- press('danmaku-toggle');off=snapshot('08-off');assert off['playing'] and not off['enabled'] and off['active']==0,off
- press('danmaku-toggle');press('danmaku-density');density=snapshot('09-density');assert density['density']==4 and density['active']<=4,density
- press('probe-next');time.sleep(4);episode=snapshot('10-next-episode');assert episode['episode']==3 and episode['match']==3 and episode['playing'] and episode['position']<40000,episode
+ press('probe-forward');sought=wait_state('04-paused-seek',lambda s:not s['playing'] and s['position']>=stable['position']+9000)
+ press('probe-back');rewound=wait_state('05-paused-rewind',lambda s:abs(s['position']-stable['position'])<300)
+ press('player-pause');resumed=wait_state('06-resumed',lambda s:s['playing'])
+ press('probe-rate');rate=wait_state('07-rate',lambda s:s['rate']==2)
+ press('danmaku-toggle');off=wait_state('08-off',lambda s:s['playing'] and not s['enabled'] and s['active']==0)
+ press('danmaku-toggle');press('danmaku-density');density=wait_state('09-density',lambda s:s['density']==4 and s['active']<=4)
+ press('probe-next');time.sleep(4);episode=wait_state('10-next-episode',lambda s:s['episode']==3 and s['match']==3 and s['playing']);assert episode['position']<40000,episode
  (OUT/'result.json').write_text(json.dumps({'passed':True,'stage':'B','nativeVideo':True,'nativeAPI':True,'comments':10000,'pause':True,'resume':True,'seek':True,'rewind':True,'rate2':True,'density':True,'toggle':True,'episode':True,'hardware':'cloud Android TV API29 x86, not Dangbei D5X'},indent=2))
 finally:
  (OUT/'failure-or-final.png').write_bytes(adb('exec-out','screencap','-p'));(OUT/'logcat.txt').write_bytes(adb('logcat','-d'))
