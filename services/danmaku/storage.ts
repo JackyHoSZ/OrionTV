@@ -49,6 +49,7 @@ export const DanmakuStorage={
   });
  },
  async getMatch(key:string):Promise<DanmakuMatch|null>{return (await readMap<DanmakuMatch>(MAPPINGS))[key]||null;},
+ async removeMatch(key:string){return serial(async()=>{const map=await readMap<DanmakuMatch>(MAPPINGS);delete map[key];await AsyncStorage.setItem(MAPPINGS,JSON.stringify(map));});},
  async saveMatch(key:string,match:DanmakuMatch){
   const {animeId,animeTitle,episodeId,episodeTitle,shift}=match;
   await writeEntry(MAPPINGS,key,{animeId,animeTitle,episodeId,episodeTitle,shift});

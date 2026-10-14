@@ -10,22 +10,36 @@ def keys(*codes,focus=None):
  result=adb(*args,'com.oriontv.danmaku.inspect/.Inspector')
  assert b'INSTRUMENTATION_CODE: -1' in result,'Remote injection/focus failed: '+result.decode()[:300]
 def press(label):keys(23,focus=label);time.sleep(1)
-def snapshot(name):
+def inspect(name):
  result=adb('shell','am','instrument','-w','com.oriontv.danmaku.inspect/.Inspector')
  (OUT/(name+'-inspection.txt')).write_bytes(result)
  assert b'INSTRUMENTATION_CODE: -1' in result,'Accessibility inspection failed'
  match=re.search(rb'INSTRUMENTATION_RESULT: xml=(.*?)\nINSTRUMENTATION_CODE:',result,re.S);assert match
  (OUT/(name+'.xml')).write_bytes(match[1]);root=ET.fromstring(match[1])
  text=' '.join(n.get('content-desc','')+' '+n.get('text','') for n in root.iter('node'))
+ (OUT/(name+'.png')).write_bytes(adb('exec-out','screencap','-p'))
+ return root,text
+def snapshot(name):
+ root,text=inspect(name)
  badge=re.search(r'PROBE loaded=\S+.*? loading=(?:true|false)',text);assert badge,text[:300]
  fields=dict(re.findall(r'(\w+)=(\S+)',badge[0]))
- parsed={k:(True if v=='true' else False if v=='false' else float(v)) for k,v in fields.items()}
- (OUT/(name+'.png')).write_bytes(adb('exec-out','screencap','-p'))
+ parsed={k:(True if v=='true' else False if v=='false' else v if k=='color' else float(v)) for k,v in fields.items()}
  parsed['capturedAt']=time.time()
  parsed['focus']=[n.get('content-desc') for n in root.iter('node') if n.get('focused')=='true']
  parsed['message']=next((n.get('content-desc')[15:] for n in root.iter('node') if n.get('content-desc','').startswith('DANMAKU_STATUS ')),'')
  (OUT/(name+'.json')).write_text(json.dumps(parsed,indent=2));print(name,parsed,flush=True)
  return parsed
+def type_text(label,value):
+ result=adb('shell','am','instrument','-w','-e','focus',label,'-e','text',value,'com.oriontv.danmaku.inspect/.Inspector')
+ assert b'INSTRUMENTATION_CODE: -1' in result,result.decode()[:300]
+ time.sleep(1)
+def wait_panel(name,phrase,timeout=45):
+ deadline=time.monotonic()+timeout
+ root,text=inspect(name)
+ while phrase not in text and time.monotonic()<deadline:
+  time.sleep(1);root,text=inspect(name)
+ assert phrase in text,text[:300]
+ return root,text
 def wait_state(name,predicate,timeout=40):
  deadline=time.monotonic()+timeout
  state=snapshot(name)
@@ -56,7 +70,21 @@ try:
  press('danmaku-toggle');off=wait_state('08-off',lambda s:s['playing'] and not s['enabled'] and s['active']==0 and not s['saving'])
  press('danmaku-toggle');press('danmaku-density');density=wait_state('09-density',lambda s:s['density']==4 and s['active']<=4)
  press('probe-next');time.sleep(4);episode=wait_state('10-next-episode',lambda s:s['episode']==3 and s['match']==3 and s['playing']);assert episode['position']<40000,episode
- (OUT/'result.json').write_text(json.dumps({'passed':True,'stage':'B','nativeVideo':True,'nativeAPI':True,'comments':10000,'pause':True,'resume':True,'seek':True,'rewind':True,'rate2':True,'density':True,'toggle':True,'episode':True,'hardware':'cloud Android TV API29 x86, not Dangbei D5X'},indent=2))
+ press('probe-normal');wait_state('11-normal-rate',lambda s:s['rate']==1)
+ press('danmaku-settings');wait_panel('12-settings-panel','播放弹幕设置')
+ press('danmaku-font');press('danmaku-opacity');press('danmaku-offset-plus')
+ press('danmaku-close');configured=wait_state('13-adjusted',lambda s:s['font']==30 and s['opacity']==1 and s['offset']==1 and not s['saving'])
+ assert 'danmaku-settings' in configured['focus'],configured
+ press('danmaku-settings');press('danmaku-manual');press('danmaku-search-go');wait_panel('14-search-results','danmaku-anime-0')
+ press('danmaku-anime-0');wait_panel('15-episode-results','danmaku-episode-1')
+ press('danmaku-episode-1');wait_panel('16-confirm','确认加载此弹幕来源')
+ press('danmaku-confirm');wait_panel('17-manual-saved','当前：')
+ press('danmaku-close');manual=wait_state('18-manual-loaded',lambda s:s['match']==3 and not s['loading'])
+ adb('shell','am','force-stop','com.oriontv.danmaku.dev')
+ adb('shell','am','start','-W','-a','android.intent.action.VIEW','-d','oriontv-danmaku://danmaku-test?reuse=1&episode=3','com.oriontv.danmaku.dev');time.sleep(10)
+ persistent=wait_state('19-restarted',lambda s:s['loaded'] and s['match']==3 and not s['loading'],timeout=90)
+ assert persistent['font']==30 and persistent['opacity']==1 and persistent['offset']==1,persistent
+ (OUT/'result.json').write_text(json.dumps({'passed':True,'stage':'C','nativeVideo':True,'nativeAPI':True,'comments':10000,'pause':True,'resume':True,'seek':True,'rewind':True,'rate2':True,'density':True,'toggle':True,'episode':True,'panel':True,'manualMatch':True,'persistentSettings':True,'perSourceOffset':True,'focusReturn':True,'hardware':'cloud Android TV API29 x86, not Dangbei D5X'},indent=2))
 finally:
  (OUT/'failure-or-final.png').write_bytes(adb('exec-out','screencap','-p'));(OUT/'logcat.txt').write_bytes(adb('logcat','-d'))
  (OUT/'meminfo.txt').write_bytes(adb('shell','dumpsys','meminfo','com.oriontv.danmaku.dev'))

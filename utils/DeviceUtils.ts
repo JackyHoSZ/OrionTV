@@ -1,12 +1,13 @@
 import { Platform, Dimensions } from "react-native";
 import { DeviceType } from "@/hooks/useResponsiveLayout";
+import {IS_DANMAKU_TV} from '@/constants/DanmakuBuild';
 
 export const DeviceUtils = {
   /**
    * 检测当前设备类型
    */
   getDeviceType(): DeviceType {
-    // if (Platform.isTV) return "tv";
+    if (IS_DANMAKU_TV) return "tv";
 
     const { width } = Dimensions.get("window");
 

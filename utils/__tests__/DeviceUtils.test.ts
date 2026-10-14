@@ -1,7 +1,9 @@
 import { Dimensions } from "react-native";
 import { DeviceUtils } from "../DeviceUtils";
+jest.mock('expo-constants',()=>({expoConfig:{android:{package:'unit-test'}}}));
 
 jest.mock("react-native", () => ({
+  Platform:{OS:'android',isTV:false},
   Dimensions: {
     get: jest.fn(),
   },

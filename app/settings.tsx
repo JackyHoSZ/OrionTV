@@ -21,7 +21,9 @@ import ResponsiveNavigation from "@/components/navigation/ResponsiveNavigation";
 import ResponsiveHeader from "@/components/navigation/ResponsiveHeader";
 import { DeviceUtils } from "@/utils/DeviceUtils";
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
-import {DanmakuConnection} from '@/components/danmaku/DanmakuConnection';
+import {DanmakuSettingsSection} from '@/components/danmaku/DanmakuSettingsSection';
+import {IS_DANMAKU_BUILD,IS_DANMAKU_TV} from '@/constants/DanmakuBuild';
+import {useDanmakuStore} from '@/stores/danmakuStore';
 
 type SectionItem = {
   component: React.ReactElement;
@@ -154,13 +156,13 @@ export default function SettingsScreen() {
   //   //   ),
   //   //   key: "videoSource",
   //   // },
-  //   Platform.OS === "android" && {
+  //   Platform.OS === "android" && !IS_DANMAKU_BUILD && {
   //     component: <UpdateSection />,
   //     key: "update",
   //   },
   // ].filter(Boolean);
   const rawSections = [
-    Platform.OS==='android'&&Platform.isTV&&{component:<DanmakuConnection/>,key:'danmaku'},
+    IS_DANMAKU_TV&&{component:<DanmakuSettingsSection/>,key:'danmaku'},
     deviceType !== "mobile" && {
       component: (
         <RemoteInputSection
@@ -200,7 +202,7 @@ export default function SettingsScreen() {
       ),
       key: "livestream",
     },
-    Platform.OS === "android" && {
+    Platform.OS === "android" && !IS_DANMAKU_BUILD && {
       component: <UpdateSection />,
       key: "update",
     },
@@ -212,7 +214,7 @@ export default function SettingsScreen() {
   // TV遥控器事件处理 - 仅在TV设备上启用
   const handleTVEvent = React.useCallback(
     (event: any) => {
-      if (deviceType !== "tv") return;
+      if (deviceType !== "tv"||useDanmakuStore.getState().panelOpen) return;
 
       if (event.eventType === "down") {
         const nextIndex = Math.min(currentFocusIndex + 1, sections.length);

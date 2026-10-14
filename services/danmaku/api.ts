@@ -72,6 +72,7 @@ export class DanmakuAPI {
   constructor(address: string, token: string, private timeoutMs = 45000, private fetcher: typeof fetch = fetch) {
     this.root = apiRoot(address, token);
   }
+  clearCache(){this.cache.clear();}
   private async perform(path: string, body: unknown, signal: AbortSignal): Promise<any> {
     for (let attempt = 0; attempt < 2; attempt++) {
       const controller = new AbortController();

@@ -1,5 +1,5 @@
-import React from "react";
-import { View, Text, StyleSheet, Pressable, Platform } from "react-native";
+import React,{useRef,useEffect} from "react";
+import { View, Text, StyleSheet, Pressable } from "react-native";
 import { Pause, Play, SkipForward, List, Tv, ArrowDownToDot, ArrowUpFromDot, Gauge } from "lucide-react-native";
 import { ThemedText } from "@/components/ThemedText";
 import { MediaButton } from "@/components/MediaButton";
@@ -8,6 +8,7 @@ import usePlayerStore from "@/stores/playerStore";
 import useDetailStore from "@/stores/detailStore";
 import { useSources } from "@/stores/sourceStore";
 import {useDanmakuStore} from '@/stores/danmakuStore';
+import {IS_DANMAKU_TV} from '@/constants/DanmakuBuild';
 
 interface PlayerControlsProps {
   showControls: boolean;
@@ -38,6 +39,12 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({ showControls, se
   const resources = useSources();
   const danmakuEnabled=useDanmakuStore(s=>s.settings.enabled);
   const density=useDanmakuStore(s=>s.settings.perSecond);
+  const panelOpen=useDanmakuStore(s=>s.panelOpen);
+  const panelContext=useDanmakuStore(s=>s.panelContext);
+  const panelButton=useRef<View>(null);const wasOpen=useRef(false);
+  useEffect(()=>{const restore=wasOpen.current&&!panelOpen&&panelContext==='player';wasOpen.current=panelOpen;
+   if(restore){const timer=setTimeout(()=>panelButton.current?.focus(),180);return()=>clearTimeout(timer);}
+  },[panelOpen,panelContext]);
 
   const videoTitle = detail?.title || "";
   const currentEpisode = episodes[currentEpisodeIndex];
@@ -121,9 +128,12 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({ showControls, se
           <MediaButton onPress={() => setShowSourceModal(true)}>
             <Tv color="white" size={24} />
           </MediaButton>
-          {Platform.OS==='android'&&Platform.isTV&&<>
+          {IS_DANMAKU_TV&&<>
             <MediaButton accessibilityLabel="danmaku-toggle" onPress={()=>void useDanmakuStore.getState().setSettings({enabled:!danmakuEnabled}).catch(()=>{})}>
               <ThemedText>{danmakuEnabled?'弹幕 开':'弹幕 关'}</ThemedText>
+            </MediaButton>
+            <MediaButton ref={panelButton} accessibilityLabel="danmaku-settings" onPress={()=>{setShowControls(true);useDanmakuStore.getState().setPanelOpen(true,'player');}}>
+              <ThemedText>弹幕设置</ThemedText>
             </MediaButton>
             <MediaButton accessibilityLabel="danmaku-density" onPress={()=>void useDanmakuStore.getState().setSettings({perSecond:([1,2,4,0] as const)[([1,2,4,0].indexOf(density)+1)%4]}).catch(()=>{})}>
               <ThemedText>{density?`${density} 条/秒`:'不限密度'}</ThemedText>

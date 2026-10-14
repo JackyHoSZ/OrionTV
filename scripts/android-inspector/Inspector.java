@@ -17,7 +17,8 @@ import org.xmlpull.v1.XmlSerializer;
 public class Inspector extends Instrumentation {
   private String keys;
   private String focus;
-  @Override public void onCreate(Bundle arguments) { super.onCreate(arguments);keys=arguments.getString("keys");focus=arguments.getString("focus");start(); }
+  private String text;
+  @Override public void onCreate(Bundle arguments) { super.onCreate(arguments);keys=arguments.getString("keys");focus=arguments.getString("focus");text=arguments.getString("text");start(); }
   @Override public void onStart() {
     Bundle result=new Bundle();
     try {
@@ -27,6 +28,10 @@ public class Inspector extends Instrumentation {
         AccessibilityNodeInfo target=find(root,focus);
         if(target==null)throw new IllegalStateException("TARGET_NOT_FOUND");
         target.refresh();
+        if(text!=null){Bundle arguments=new Bundle();arguments.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,text);
+          if(!target.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT,arguments))throw new IllegalStateException("TEXT_REFUSED");
+          finish(Activity.RESULT_OK,result);return;
+        }
         if(!target.isFocused()&&!target.performAction(AccessibilityNodeInfo.ACTION_FOCUS))throw new IllegalStateException("FOCUS_REFUSED");
         SystemClock.sleep(300);
       }

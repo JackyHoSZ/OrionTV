@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Dimensions, Platform } from "react-native";
+import {IS_DANMAKU_TV} from '@/constants/DanmakuBuild';
 
 export type DeviceType = "mobile" | "tablet" | "tv";
 
@@ -21,7 +22,7 @@ const BREAKPOINTS = {
 };
 
 const getDeviceType = (width: number): DeviceType => {
-  if (Platform.isTV) return "tv";
+  if (Platform.isTV||IS_DANMAKU_TV) return "tv";
 
   if (width >= BREAKPOINTS.tv.min) return "tv";
   if (width >= BREAKPOINTS.tablet.min) return "tablet";

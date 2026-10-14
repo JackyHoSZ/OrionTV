@@ -1,6 +1,7 @@
+import {IS_DANMAKU_BUILD} from './DanmakuBuild';
 export const UPDATE_CONFIG = {
   // 自动检查更新
-  AUTO_CHECK: true,
+  AUTO_CHECK: !IS_DANMAKU_BUILD,
 
   // 检查更新间隔（毫秒）
   CHECK_INTERVAL: 12 * 60 * 60 * 1000, // 12小时

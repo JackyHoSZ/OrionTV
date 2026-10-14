@@ -23,16 +23,16 @@ function offsetKey(settings:DanmakuSettings,media:DanmakuMedia){return savedKey(
 function configured(s:DanmakuSettings){return !!s.apiUrl.trim();}
 interface DanmakuState {
  settings:DanmakuSettings; hydrated:boolean; media:DanmakuMedia|null; comments:DanmakuComment[];
- match:DanmakuMatch|null; loading:boolean; settingsSaving:boolean; message:string; panelOpen:boolean; mediaOffset:number;
+ match:DanmakuMatch|null; loading:boolean; settingsSaving:boolean; message:string; panelOpen:boolean; panelContext:'player'|'global'; mediaOffset:number;
  hydrate:()=>Promise<void>;setSettings:(patch:Partial<DanmakuSettings>)=>Promise<void>;
  bind:(media:DanmakuMedia)=>Promise<void>;reload:(automatic?:boolean)=>Promise<void>;
  selectMatch:(match:DanmakuMatch)=>Promise<void>;setMediaOffset:(value:number)=>Promise<void>;
- setPanelOpen:(value:boolean)=>void;clear:()=>void;search:(keyword:string,signal?:AbortSignal)=>Promise<DanmakuAnime[]>;
- episodes:(anime:DanmakuAnime,signal?:AbortSignal)=>Promise<DanmakuMatch[]>;testConnection:()=>Promise<void>;
+ setPanelOpen:(value:boolean,context?:'player'|'global')=>void;rematch:()=>Promise<void>;clear:()=>void;search:(keyword:string,signal?:AbortSignal)=>Promise<DanmakuAnime[]>;
+ episodes:(anime:DanmakuAnime,signal?:AbortSignal)=>Promise<DanmakuMatch[]>;testConnection:(signal?:AbortSignal)=>Promise<void>;
 }
 export const useDanmakuStore=create<DanmakuState>((set,get)=>({
  settings:{...DEFAULT_DANMAKU_SETTINGS},hydrated:false,media:null,comments:[],match:null,
- loading:false,settingsSaving:false,message:'配置弹幕服务器和普通查询 Token 后可自动加载',panelOpen:false,mediaOffset:0,
+ loading:false,settingsSaving:false,message:'配置弹幕服务器和普通查询 Token 后可自动加载',panelOpen:false,panelContext:'player',mediaOffset:0,
  hydrate:()=>{
   if(!hydratePromise)hydratePromise=(async()=>{
    try{set({settings:await DanmakuStorage.loadSettings(),hydrated:true});}
@@ -72,7 +72,7 @@ export const useDanmakuStore=create<DanmakuState>((set,get)=>({
    let selected:DanmakuMatch|null=null;
    if(saved){
     // IDs can change after a server restart. Resolve saved title/source and episode again.
-    const animes=await service.search(saved.animeTitle.replace(/from\s+.*$/i,'').replace(/[【\[].*?[】\]]/g,''),own.signal);
+    const animes=await service.search(saved.animeTitle.replace(/from\s+.*$/i,'').replace(/[【\[].*?[】\]]/g,'').replace(/[（(](?:19|20)\d{2}[)）]/g,'').trim(),own.signal);
     const anime=animes.find(a=>a.animeTitle===saved.animeTitle);
     if(anime){const episodes=await service.episodes(anime,own.signal);const found=episodes.filter(e=>e.episodeTitle===saved.episodeTitle);if(found.length===1)selected=found[0];}
    }
@@ -99,9 +99,10 @@ export const useDanmakuStore=create<DanmakuState>((set,get)=>({
  },
  setMediaOffset:async value=>{const {media,settings}=get();if(!media)return;const offset=Math.min(120,Math.max(-120,value));
   await DanmakuStorage.saveOffset(offsetKey(settings,media),offset);if(get().media===media)set({mediaOffset:offset});},
- setPanelOpen:panelOpen=>set({panelOpen}),
+ setPanelOpen:(panelOpen,panelContext='player')=>set({panelOpen,panelContext}),
+ rematch:async()=>{const {media,settings}=get();if(!media)return;latest.cancel();await DanmakuStorage.removeMatch(savedKey(settings,media));if(get().media!==media)return;api(settings).clearCache();await get().reload(true);},
  clear:()=>{latest.cancel();set({media:null,comments:[],match:null,loading:false,panelOpen:false,message:'',mediaOffset:0});},
  search:(keyword,signal)=>api(get().settings).search(keyword,signal),
  episodes:(anime,signal)=>api(get().settings).episodes(anime,signal),
- testConnection:async()=>{await api(get().settings).test();},
+ testConnection:async(signal)=>{await api(get().settings).test(signal);},
 }));

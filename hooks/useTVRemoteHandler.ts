@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useTVEventHandler, HWEvent } from "react-native";
 import usePlayerStore from "@/stores/playerStore";
+import {useDanmakuStore} from '@/stores/danmakuStore';
 
 const SEEK_STEP = 20 * 1000; // 快进/快退的时间步长（毫秒）
 
@@ -13,6 +14,10 @@ const CONTROLS_TIMEOUT = 5000;
  */
 export const useTVRemoteHandler = () => {
   const { showControls, setShowControls, showEpisodeModal, togglePlayPause, seek } = usePlayerStore();
+  const panelOpen=useDanmakuStore(s=>s.panelOpen);
+  const showSourceModal=usePlayerStore(s=>s.showSourceModal);
+  const showSpeedModal=usePlayerStore(s=>s.showSpeedModal);
+  const modalOpen=panelOpen||showEpisodeModal||showSourceModal||showSpeedModal;
 
   const controlsTimer = useRef<NodeJS.Timeout | null>(null);
   const fastForwardIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -23,11 +28,13 @@ export const useTVRemoteHandler = () => {
     if (controlsTimer.current) {
       clearTimeout(controlsTimer.current);
     }
+    if(modalOpen)return;
     // 设置新的定时器
     controlsTimer.current = setTimeout(() => {
       setShowControls(false);
     }, CONTROLS_TIMEOUT);
-  }, [setShowControls]);
+  }, [setShowControls,modalOpen]);
+  useEffect(()=>{if(modalOpen&&fastForwardIntervalRef.current){clearInterval(fastForwardIntervalRef.current);fastForwardIntervalRef.current=null;}},[modalOpen]);
 
   // 当控件显示时，启动定时器
   useEffect(() => {
@@ -60,7 +67,7 @@ export const useTVRemoteHandler = () => {
   // 处理遥控器事件
   const handleTVEvent = useCallback(
     (event: HWEvent) => {
-      if (showEpisodeModal) {
+      if (modalOpen) {
         return;
       }
 
@@ -112,7 +119,7 @@ export const useTVRemoteHandler = () => {
           break;
       }
     },
-    [showControls, showEpisodeModal, setShowControls, resetTimer, togglePlayPause, seek]
+    [showControls, modalOpen, setShowControls, resetTimer, togglePlayPause, seek]
   );
 
   useTVEventHandler(handleTVEvent);

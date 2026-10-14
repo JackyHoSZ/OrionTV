@@ -17,6 +17,7 @@ import { UPDATE_CONFIG } from "@/constants/UpdateConfig";
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 import Logger from '@/utils/Logger';
 import {useDanmakuStore} from '@/stores/danmakuStore';
+import {IS_DANMAKU_TV} from '@/constants/DanmakuBuild';
 
 const logger = Logger.withTag('RootLayout');
 
@@ -40,7 +41,7 @@ export default function RootLayout() {
     };
     initializeApp();
     initUpdateStore(); // 初始化更新存储
-    if(Platform.OS==='android'&&Platform.isTV)void useDanmakuStore.getState().hydrate();
+    if(IS_DANMAKU_TV)void useDanmakuStore.getState().hydrate();
   }, [loadSettings]);
 
   useEffect(() => {

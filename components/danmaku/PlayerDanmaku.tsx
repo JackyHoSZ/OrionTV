@@ -1,5 +1,5 @@
 import React,{memo,useEffect,useMemo} from 'react';
-import {Platform} from 'react-native';
+import {IS_DANMAKU_TV} from '@/constants/DanmakuBuild';
 import usePlayerStore from '@/stores/playerStore';
 import useDetailStore from '@/stores/detailStore';
 import {useDanmakuStore} from '@/stores/danmakuStore';
@@ -23,11 +23,11 @@ export const PlayerDanmaku=memo(function PlayerDanmaku({onActiveCount}:{onActive
  const identity=media?mediaKey(media)+sourceKey(media):'';
  const display=useMemo(()=>({...settings,offset:settings.offset+mediaOffset}),[settings,mediaOffset]);
  useEffect(()=>{
-  if(Platform.OS!=='android'||!Platform.isTV)return;
+  if(!IS_DANMAKU_TV)return;
   if(media)void useDanmakuStore.getState().bind(media);
   else useDanmakuStore.getState().clear();
   return()=>useDanmakuStore.getState().clear();
  },[media]);
- if(Platform.OS!=='android'||!Platform.isTV||!media)return null;
- return <DanmakuOverlay comments={comments} settings={display} status={status} identity={identity} onActiveCount={onActiveCount}/>;
+ if(!IS_DANMAKU_TV||!media)return null;
+ return <DanmakuOverlay key={identity} comments={comments} settings={display} status={status} identity={identity} onActiveCount={onActiveCount}/>;
 });

@@ -19,6 +19,9 @@ import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 import { useVideoHandlers } from "@/hooks/useVideoHandlers";
 import Logger from '@/utils/Logger';
 import {PlayerDanmaku} from '@/components/danmaku/PlayerDanmaku';
+import {DanmakuPanel} from '@/components/danmaku/DanmakuPanel';
+import {useDanmakuStore} from '@/stores/danmakuStore';
+import {IS_DANMAKU_TV} from '@/constants/DanmakuBuild';
 
 const NativeVideo=memo(Video);
 
@@ -181,6 +184,7 @@ export default function PlayScreen() {
 
   useEffect(() => {
     const backAction = () => {
+      if(useDanmakuStore.getState().panelOpen){useDanmakuStore.getState().setPanelOpen(false);return true;}
       if (showControls) {
         setShowControls(false);
         return true;
@@ -219,6 +223,7 @@ export default function PlayScreen() {
 
   return (
     <ThemedView focusable style={dynamicStyles.container}>
+      {IS_DANMAKU_TV&&<DanmakuPanel/>}
       <TouchableOpacity
         activeOpacity={1}
         style={dynamicStyles.videoContainer}
