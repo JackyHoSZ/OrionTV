@@ -31,9 +31,21 @@ describe('danmu_api protocol', () => {
     await expect(new DanmakuAPI('https://example.org','',100,fetcher(async()=>bad)).search('test')).rejects.toMatchObject({code:'JSON'});
     await expect(new DanmakuAPI('https://example.org','',100,fetcher(async()=>response({success:true}))).search('test')).rejects.toMatchObject({code:'FORMAT'});
   });
+  test('episode lookup uses the Dandan animeId instead of a vendor-specific string bangumiId',async()=>{
+    const f=jest.fn(async()=>response({success:true,bangumi:{episodes:[{episodeId:11161,episodeTitle:'【qq】 第2集',episodeNumber:'2'}]}}));
+    const api=new DanmakuAPI('https://example.org','',100,fetcher(f));
+    await expect(api.episodes({animeId:2125916,bangumiId:'mzc002002kqssyu',animeTitle:'庆余年第二季'})).resolves.toHaveLength(1);
+    expect(f).toHaveBeenCalledWith('https://example.org/api/v2/bangumi/2125916',expect.anything());
+  });
   test('deduplicates concurrent requests and caches a session response', async()=>{
     const f=jest.fn(async()=>response({success:true,animes:[]})); const api=new DanmakuAPI('https://example.org','',100,fetcher(f));
     await Promise.all([api.search('a'),api.search('a')]); await api.search('a'); expect(f).toHaveBeenCalledTimes(1);
+  });
+  test('a temporary semantic API error is retried by a later user request rather than cached',async()=>{
+    const f=jest.fn().mockResolvedValueOnce(response({success:false,errorCode:500})).mockResolvedValueOnce(response({success:true,animes:[]}));
+    const api=new DanmakuAPI('https://example.org','',100,fetcher(f));
+    await expect(api.search('a')).rejects.toMatchObject({code:'FORMAT'});
+    await expect(api.search('a')).resolves.toEqual([]);expect(f).toHaveBeenCalledTimes(2);
   });
   test('cancel one subscriber without cancelling a still-used request', async()=>{
     let resolve!: (r:Response)=>void;

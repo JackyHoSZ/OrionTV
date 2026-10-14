@@ -1,7 +1,7 @@
 export type DanmakuMode = 'scroll' | 'top' | 'bottom';
 export interface DanmakuComment { id: string; time: number; text: string; color: string; mode: DanmakuMode }
-export interface DanmakuEpisode { episodeId: number; episodeTitle: string; episodeNumber?: number; url?: string }
-export interface DanmakuAnime { animeId: number; bangumiId?: number; animeTitle: string; source?: string; typeDescription?: string; episodes?: DanmakuEpisode[] }
+export interface DanmakuEpisode { episodeId: number; episodeTitle: string; episodeNumber?: string|number; url?: string }
+export interface DanmakuAnime { animeId: number; bangumiId?: string|number; animeTitle: string; source?: string; typeDescription?: string; episodes?: DanmakuEpisode[] }
 export interface DanmakuMatch extends DanmakuEpisode { animeId: number; animeTitle: string; shift?: number }
 export interface DanmakuMedia {
   title: string; englishTitle?: string; year?: string; season?: number; episode?: number;

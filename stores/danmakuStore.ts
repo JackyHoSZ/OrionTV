@@ -23,7 +23,7 @@ function offsetKey(settings:DanmakuSettings,media:DanmakuMedia){return savedKey(
 function configured(s:DanmakuSettings){return !!s.apiUrl.trim();}
 interface DanmakuState {
  settings:DanmakuSettings; hydrated:boolean; media:DanmakuMedia|null; comments:DanmakuComment[];
- match:DanmakuMatch|null; loading:boolean; message:string; panelOpen:boolean; mediaOffset:number;
+ match:DanmakuMatch|null; loading:boolean; settingsSaving:boolean; message:string; panelOpen:boolean; mediaOffset:number;
  hydrate:()=>Promise<void>;setSettings:(patch:Partial<DanmakuSettings>)=>Promise<void>;
  bind:(media:DanmakuMedia)=>Promise<void>;reload:(automatic?:boolean)=>Promise<void>;
  selectMatch:(match:DanmakuMatch)=>Promise<void>;setMediaOffset:(value:number)=>Promise<void>;
@@ -32,7 +32,7 @@ interface DanmakuState {
 }
 export const useDanmakuStore=create<DanmakuState>((set,get)=>({
  settings:{...DEFAULT_DANMAKU_SETTINGS},hydrated:false,media:null,comments:[],match:null,
- loading:false,message:'配置弹幕服务器和普通查询 Token 后可自动加载',panelOpen:false,mediaOffset:0,
+ loading:false,settingsSaving:false,message:'配置弹幕服务器和普通查询 Token 后可自动加载',panelOpen:false,mediaOffset:0,
  hydrate:()=>{
   if(!hydratePromise)hydratePromise=(async()=>{
    try{set({settings:await DanmakuStorage.loadSettings(),hydrated:true});}
@@ -43,8 +43,11 @@ export const useDanmakuStore=create<DanmakuState>((set,get)=>({
   const change=settingsWrites.catch(()=>{}).then(async()=>{
   const before=get().settings;const settings=normalizeSettings({...before,...patch});
   if(patch.apiUrl!==undefined || patch.token!==undefined)apiRoot(settings.apiUrl,settings.token);
-  try{await DanmakuStorage.saveSettings(settings);set({settings});}
-  catch{set({message:'弹幕设置保存失败，请重试'});throw new DanmakuError('CONFIG');}
+  const changedConnection=before.apiUrl!==settings.apiUrl||before.token!==settings.token;
+  set({settingsSaving:true,...(!changedConnection?{settings}:{})});
+  if(!settings.enabled){latest.cancel();set({loading:false});}
+  try{await DanmakuStorage.saveSettings(settings);set({settings,settingsSaving:false});}
+  catch{set({settings:before,settingsSaving:false,message:'弹幕设置保存失败，请重试'});throw new DanmakuError('CONFIG');}
   if(before.apiUrl!==settings.apiUrl || before.token!==settings.token){latest.cancel();client=null;set({comments:[],match:null});if(get().media)void get().bind(get().media!);}
   else if(!settings.enabled){latest.cancel();set({loading:false});}
   else if(settings.enabled && settings.autoLoad && !get().loading && !get().comments.length && get().media)void get().reload();

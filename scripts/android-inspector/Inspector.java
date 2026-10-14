@@ -4,6 +4,8 @@ import android.app.Activity;
 import android.app.UiAutomation;
 import android.os.SystemClock;
 import android.view.KeyEvent;
+import android.view.InputDevice;
+import android.view.KeyCharacterMap;
 import android.os.Bundle;
 import android.graphics.Rect;
 import android.view.accessibility.AccessibilityNodeInfo;
@@ -24,15 +26,16 @@ public class Inspector extends Instrumentation {
         AccessibilityNodeInfo root=root(automation);
         AccessibilityNodeInfo target=find(root,focus);
         if(target==null)throw new IllegalStateException("TARGET_NOT_FOUND");
+        target.refresh();
         if(!target.isFocused()&&!target.performAction(AccessibilityNodeInfo.ACTION_FOCUS))throw new IllegalStateException("FOCUS_REFUSED");
         SystemClock.sleep(300);
       }
       if(keys!=null){
         for(String value:keys.split(",")){
           int key=Integer.parseInt(value);long t=SystemClock.uptimeMillis();
-          automation.injectInputEvent(new KeyEvent(t,t,KeyEvent.ACTION_DOWN,key,0),true);
+          automation.injectInputEvent(new KeyEvent(t,t,KeyEvent.ACTION_DOWN,key,0,0,KeyCharacterMap.VIRTUAL_KEYBOARD,0,KeyEvent.FLAG_FROM_SYSTEM,InputDevice.SOURCE_DPAD),true);
           SystemClock.sleep(80);
-          automation.injectInputEvent(new KeyEvent(t,SystemClock.uptimeMillis(),KeyEvent.ACTION_UP,key,0),true);
+          automation.injectInputEvent(new KeyEvent(t,SystemClock.uptimeMillis(),KeyEvent.ACTION_UP,key,0,0,KeyCharacterMap.VIRTUAL_KEYBOARD,0,KeyEvent.FLAG_FROM_SYSTEM,InputDevice.SOURCE_DPAD),true);
           SystemClock.sleep(800);
         }
         result.putString("keys",keys);finish(Activity.RESULT_OK,result);return;
@@ -52,18 +55,22 @@ public class Inspector extends Instrumentation {
   private AccessibilityNodeInfo find(AccessibilityNodeInfo node,String label){
     if(node==null)return null;
     if(label.contentEquals(node.getContentDescription()==null?"":node.getContentDescription()))return node;
+    if(node.getClassName()!=null&&node.getClassName().toString().startsWith("com.horcrux.svg"))return null;
     for(int i=0;i<node.getChildCount();i++){AccessibilityNodeInfo result=find(node.getChild(i),label);if(result!=null)return result;}
     return null;
   }
   private void write(XmlSerializer xml,AccessibilityNodeInfo node,int depth)throws Exception {
     if(depth>60)return;
+    CharSequence label=node.getContentDescription();
+    if(label!=null&&(label.toString().startsWith("PROBE ")||label.toString().startsWith("DANMAKU_STATUS ")))node.refresh();
     xml.startTag(null,"node");
     xml.attribute(null,"text",node.getText()==null?"":node.getText().toString());
     xml.attribute(null,"content-desc",node.getContentDescription()==null?"":node.getContentDescription().toString());
     xml.attribute(null,"class",node.getClassName()==null?"":node.getClassName().toString());
     xml.attribute(null,"focused",Boolean.toString(node.isFocused()));
     Rect r=new Rect();node.getBoundsInScreen(r);xml.attribute(null,"bounds","["+r.left+","+r.top+"]["+r.right+","+r.bottom+"]");
-    for(int i=0;i<node.getChildCount();i++){AccessibilityNodeInfo child=node.getChild(i);if(child!=null){write(xml,child,depth+1);child.recycle();}}
+    if(node.getClassName()==null||!node.getClassName().toString().startsWith("com.horcrux.svg"))
+      for(int i=0;i<node.getChildCount();i++){AccessibilityNodeInfo child=node.getChild(i);if(child!=null){write(xml,child,depth+1);child.recycle();}}
     xml.endTag(null,"node");
   }
 }

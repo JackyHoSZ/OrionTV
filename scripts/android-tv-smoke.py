@@ -11,7 +11,6 @@ def keys(*codes,focus=None):
  assert b'INSTRUMENTATION_CODE: -1' in result,'Remote injection/focus failed: '+result.decode()[:300]
 def press(label):keys(23,focus=label);time.sleep(1)
 def snapshot(name):
- (OUT/(name+'.png')).write_bytes(adb('exec-out','screencap','-p'))
  result=adb('shell','am','instrument','-w','com.oriontv.danmaku.inspect/.Inspector')
  (OUT/(name+'-inspection.txt')).write_bytes(result)
  assert b'INSTRUMENTATION_CODE: -1' in result,'Accessibility inspection failed'
@@ -21,6 +20,7 @@ def snapshot(name):
  badge=re.search(r'PROBE loaded=\S+.*? loading=(?:true|false)',text);assert badge,text[:300]
  fields=dict(re.findall(r'(\w+)=(\S+)',badge[0]))
  parsed={k:(True if v=='true' else False if v=='false' else float(v)) for k,v in fields.items()}
+ (OUT/(name+'.png')).write_bytes(adb('exec-out','screencap','-p'))
  parsed['capturedAt']=time.time()
  parsed['focus']=[n.get('content-desc') for n in root.iter('node') if n.get('focused')=='true']
  parsed['message']=next((n.get('content-desc')[15:] for n in root.iter('node') if n.get('content-desc','').startswith('DANMAKU_STATUS ')),'')
@@ -53,7 +53,7 @@ try:
  press('probe-back');rewound=wait_state('05-paused-rewind',lambda s:abs(s['position']-stable['position'])<300)
  press('player-pause');resumed=wait_state('06-resumed',lambda s:s['playing'])
  press('probe-rate');rate=wait_state('07-rate',lambda s:s['rate']==2)
- press('danmaku-toggle');off=wait_state('08-off',lambda s:s['playing'] and not s['enabled'] and s['active']==0)
+ press('danmaku-toggle');off=wait_state('08-off',lambda s:s['playing'] and not s['enabled'] and s['active']==0 and not s['saving'])
  press('danmaku-toggle');press('danmaku-density');density=wait_state('09-density',lambda s:s['density']==4 and s['active']<=4)
  press('probe-next');time.sleep(4);episode=wait_state('10-next-episode',lambda s:s['episode']==3 and s['match']==3 and s['playing']);assert episode['position']<40000,episode
  (OUT/'result.json').write_text(json.dumps({'passed':True,'stage':'B','nativeVideo':True,'nativeAPI':True,'comments':10000,'pause':True,'resume':True,'seek':True,'rewind':True,'rate2':True,'density':True,'toggle':True,'episode':True,'hardware':'cloud Android TV API29 x86, not Dangbei D5X'},indent=2))

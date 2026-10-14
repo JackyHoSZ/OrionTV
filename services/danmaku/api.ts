@@ -109,6 +109,7 @@ export class DanmakuAPI {
       flight = { controller, users: 0, promise: Promise.resolve() };
       const own = flight;
       own.promise = this.perform(path, body, controller.signal).then(value => {
+        successful(value); // A semantic API error must not poison the ten-minute success cache.
         this.cache.delete(key); this.cache.set(key, { value, expires: Date.now() + 600000 });
         while (this.cache.size > 8) this.cache.delete(this.cache.keys().next().value!);
         // Keep session comment memory bounded independently of the number of metadata entries.
@@ -150,7 +151,7 @@ export class DanmakuAPI {
     });
   }
   async episodes(anime: DanmakuAnime, signal?: AbortSignal): Promise<DanmakuMatch[]> {
-    const data = successful(await this.request('/bangumi/' + (anime.bangumiId || anime.animeId), undefined, signal));
+    const data = successful(await this.request('/bangumi/' + anime.animeId, undefined, signal));
     const bangumi = object(data.bangumi);
     if (!Array.isArray(bangumi.episodes)) throw new DanmakuError('FORMAT');
     return bangumi.episodes.map((v: unknown) => ({ ...episode(v), animeId: anime.animeId, animeTitle: anime.animeTitle }));
