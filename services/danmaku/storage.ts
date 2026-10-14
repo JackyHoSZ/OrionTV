@@ -7,6 +7,7 @@ const CONNECTION='orion_danmaku_connection_v1';
 const MAPPINGS='orion_danmaku_mappings_v1';
 const OFFSETS='orion_danmaku_offsets_v1';
 let writes: Promise<void>=Promise.resolve();
+let connectionSnapshot:string|null=null;
 function serial(task:()=>Promise<void>):Promise<void> {
  const own=writes.catch(()=>{}).then(task);writes=own;return own;
 }
@@ -33,6 +34,7 @@ async function writeEntry<T>(key:string,identity:string,value:T):Promise<void> {
 export const DanmakuStorage={
  async loadSettings():Promise<DanmakuSettings> {
   const [settings,secret]=await Promise.all([AsyncStorage.getItem(SETTINGS),SecureStore.getItemAsync(CONNECTION)]);
+  connectionSnapshot=secret;
   let data={};let connection={};
   try{data=settings?JSON.parse(settings):{};}catch{}
   try{connection=secret?JSON.parse(secret):{};}catch{}
@@ -40,8 +42,9 @@ export const DanmakuStorage={
  },
  async saveSettings(settings:DanmakuSettings):Promise<void> {
   const {apiUrl,token,...display}=normalizeSettings(settings);
+  const secret=JSON.stringify({apiUrl,token});
   return serial(async()=>{
-   await SecureStore.setItemAsync(CONNECTION,JSON.stringify({apiUrl,token}));
+   if(connectionSnapshot!==secret){await SecureStore.setItemAsync(CONNECTION,secret);connectionSnapshot=secret;}
    await AsyncStorage.setItem(SETTINGS,JSON.stringify(display));
   });
  },

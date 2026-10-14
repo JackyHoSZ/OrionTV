@@ -19,6 +19,11 @@ test('manual match and per-source offset are independent, survive reload, and do
  expect(await DanmakuStorage.getOffset('film:source-a')).toBe(2);expect(await DanmakuStorage.getOffset('film:source-b')).toBe(-1);
  expect(JSON.stringify(await AsyncStorage.multiGet(await AsyncStorage.getAllKeys()))).not.toContain('source/?secret');
 });
+test('display-only edits persist without rewriting an unchanged encrypted connection',async()=>{
+ const before=await DanmakuStorage.loadSettings();jest.mocked(SecureStore.setItemAsync).mockClear();
+ await DanmakuStorage.saveSettings({...before,fontSize:30});
+ expect(SecureStore.setItemAsync).not.toHaveBeenCalled();expect((await DanmakuStorage.loadSettings()).fontSize).toBe(30);
+});
 test('malformed persisted settings are bounded, preventing unbounded density or animation values',()=>{
  expect(normalizeSettings({...defaults,maxOnScreen:999,fontSize:-5,opacity:99,perSecond:999})).toMatchObject({maxOnScreen:24,fontSize:16,opacity:1,perSecond:2});
 });
