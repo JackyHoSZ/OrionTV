@@ -1,5 +1,5 @@
 """Cloud-only probe JS rebuild, reusing the already compiled unchanged native engine."""
-import pathlib,zipfile,subprocess,os,base64
+import pathlib,zipfile,subprocess,os,base64,re
 apk=pathlib.Path('artifacts/OrionTV-Danmaku-e2e.apk')
 with zipfile.ZipFile(apk) as z:
  videos=[n for n in z.namelist() if n.endswith('.mp4')]
@@ -11,7 +11,7 @@ assert len(bundles)==1,bundles
 patched=apk.with_name('patched-unsigned.apk')
 with zipfile.ZipFile(apk) as source,zipfile.ZipFile(patched,'w') as dest:
  for entry in source.infolist():
-  if entry.filename.startswith('META-INF/'):continue
+  if re.fullmatch(r'META-INF/(?:MANIFEST\.MF|[^/]+\.(?:SF|RSA|DSA|EC))',entry.filename,re.I):continue
   dest.writestr(entry,bundles[0].read_bytes() if entry.filename=='assets/index.android.bundle' else source.read(entry.filename))
 tools=pathlib.Path(os.environ.get('ANDROID_HOME','/usr/local/lib/android/sdk'))/'build-tools/34.0.0'
 aligned=apk.with_name('patched-aligned.apk')

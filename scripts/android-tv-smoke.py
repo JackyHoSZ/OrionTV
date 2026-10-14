@@ -3,6 +3,9 @@ import json, pathlib, re, subprocess, time, xml.etree.ElementTree as ET
 
 OUT = pathlib.Path('test-results/emulator')
 OUT.mkdir(parents=True, exist_ok=True)
+# A reused build artifact contains old evidence; every run starts with an empty evidence folder.
+for old in OUT.iterdir():
+    if old.is_file(): old.unlink()
 
 def adb(*args):
     return subprocess.check_output(['adb', *args])
