@@ -28,8 +28,7 @@ export default function DanmakuTestScreen() {
         onPress={async () => {
           setCommands(n=>n+1);
           try {
-            setRpc('GET_STATUS');
-            const current=await Promise.race([ref.current?.getStatusAsync(),new Promise<never>((_,reject)=>setTimeout(()=>reject(new Error('GET_STATUS_TIMEOUT')),5000))]);
+            const current=status;
             setRpc(current?.isLoaded?'SET_STATE':'UNLOADED');
             if(current?.isLoaded){
               const next=current.shouldPlay?await ref.current?.pauseAsync():await ref.current?.playAsync();

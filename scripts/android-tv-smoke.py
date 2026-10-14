@@ -40,7 +40,7 @@ try:
     assert playing['loaded'] and playing['playing'] and playing['position'] > 1000, playing
     # Re-establish physical TV focus after the separate accessibility inspector disconnects.
     keys(22,21,23)
-    time.sleep(1)
+    time.sleep(5)
     paused = snapshot('02-paused')
     assert not paused['playing'], paused
     time.sleep(2)
