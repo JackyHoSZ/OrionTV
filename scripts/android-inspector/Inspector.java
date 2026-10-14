@@ -22,8 +22,9 @@ public class Inspector extends Instrumentation {
       if(keys!=null){
         for(String value:keys.split(",")){
           int key=Integer.parseInt(value);long t=SystemClock.uptimeMillis();
-          automation.injectInputEvent(new KeyEvent(t,t,KeyEvent.ACTION_DOWN,key,0),false);
-          automation.injectInputEvent(new KeyEvent(t,t+50,KeyEvent.ACTION_UP,key,0),false);
+          automation.injectInputEvent(new KeyEvent(t,t,KeyEvent.ACTION_DOWN,key,0),true);
+          SystemClock.sleep(80);
+          automation.injectInputEvent(new KeyEvent(t,SystemClock.uptimeMillis(),KeyEvent.ACTION_UP,key,0),true);
           SystemClock.sleep(800);
         }
         result.putString("keys",keys);finish(Activity.RESULT_OK,result);return;

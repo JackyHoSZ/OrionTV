@@ -31,6 +31,8 @@ export default function DanmakuTestScreen() {
             const current=status;
             setRpc(current?.isLoaded?'SET_STATE':'UNLOADED');
             if(current?.isLoaded){
+              // Keep the controlled prop consistent before the native status callback rerenders.
+              setShouldPlay(!current.shouldPlay);
               const next=current.shouldPlay?await ref.current?.pauseAsync():await ref.current?.playAsync();
               if(next?.isLoaded){setShouldPlay(next.shouldPlay);setRpc(`before=${current.shouldPlay}/${current.isPlaying};after=${next.shouldPlay}/${next.isPlaying}`);}
             }
