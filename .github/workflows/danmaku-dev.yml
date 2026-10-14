@@ -29,6 +29,8 @@ jobs:
           distribution: zulu
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
       - name: Generate authorized synthetic video
         run: |
           sudo apt-get update -qq
@@ -46,6 +48,7 @@ jobs:
           cd ..
           mkdir -p artifacts
           cp android/app/build/outputs/apk/release/app-release.apk artifacts/OrionTV-Danmaku-e2e.apk
+      - run: bash scripts/android-inspector/build.sh
       - name: Enable KVM for Android TV
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules

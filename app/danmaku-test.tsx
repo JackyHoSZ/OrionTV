@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Text, View, StyleSheet } from 'react-native';
+import { Text, View, StyleSheet, useTVEventHandler, Platform } from 'react-native';
 import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 import { StyledButton } from '@/components/StyledButton';
 import { OverlayProbe } from '@/components/danmaku/OverlayProbe';
@@ -8,19 +8,23 @@ import { OverlayProbe } from '@/components/danmaku/OverlayProbe';
 export default function DanmakuTestScreen() {
   const ref = useRef<Video>(null);
   const [status, setStatus] = useState<AVPlaybackStatus | null>(null);
+  const [shouldPlay, setShouldPlay] = useState(true);
+  const [commands, setCommands] = useState(0);
+  const [remote, setRemote] = useState('none');
+  useTVEventHandler(event => { if (['select','left','right','up','down'].includes(event.eventType)) setRemote(event.eventType+':'+event.eventKeyAction); });
   if (process.env.EXPO_PUBLIC_DANMAKU_E2E !== '1') return <Text>测试入口未启用</Text>;
   const loaded = status?.isLoaded;
   return <View style={styles.screen}>
     <Video ref={ref} source={require('../assets/danmaku-test.mp4')}
-      style={StyleSheet.absoluteFill} resizeMode={ResizeMode.CONTAIN} shouldPlay isLooping
+      style={StyleSheet.absoluteFill} resizeMode={ResizeMode.CONTAIN} shouldPlay={shouldPlay} isLooping
       useNativeControls={false} progressUpdateIntervalMillis={250} onPlaybackStatusUpdate={setStatus} />
     <OverlayProbe status={status} />
-    <Text style={styles.status} accessibilityLabel={`PROBE loaded=${!!loaded} playing=${loaded && status.isPlaying} position=${loaded ? status.positionMillis : 0}`}>
-      {`PROBE loaded=${!!loaded} playing=${loaded && status.isPlaying} position=${loaded ? status.positionMillis : 0}`}
+    <Text style={styles.status} accessibilityLabel={`PROBE loaded=${!!loaded} playing=${loaded && status.isPlaying} position=${loaded ? status.positionMillis : 0} commands=${commands} tv=${Platform.isTV} remote=${remote}`}>
+      {`PROBE loaded=${!!loaded} playing=${loaded && status.isPlaying} position=${loaded ? status.positionMillis : 0} commands=${commands} tv=${Platform.isTV} remote=${remote}`}
     </Text>
     <View style={styles.controls}>
       <StyledButton text="暂停 / 继续" accessibilityLabel="probe-pause" hasTVPreferredFocus
-        onPress={() => loaded && (status.isPlaying ? ref.current?.pauseAsync() : ref.current?.playAsync())} />
+        onPress={() => { setCommands(n=>n+1); setShouldPlay(value=>!value); }} />
       <StyledButton text="快进 10 秒" accessibilityLabel="probe-seek"
         onPress={() => loaded && ref.current?.setPositionAsync(status.positionMillis + 10000)} />
     </View>

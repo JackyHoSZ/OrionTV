@@ -34,6 +34,7 @@ try:
     # Re-establish physical TV focus after the separate accessibility inspector disconnects.
     adb('shell', 'input', 'keyevent', '22')
     adb('shell', 'input', 'keyevent', '21')
+    time.sleep(1)
     adb('shell', 'input', 'keyevent', '23')
     time.sleep(1)
     paused = snapshot('02-paused')
