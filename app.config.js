@@ -2,9 +2,6 @@ const { expo } = require('./app.json');
 
 module.exports = () => ({
   ...expo,
-  plugins: expo.plugins.map(plugin => Array.isArray(plugin) && plugin[0] === 'expo-build-properties'
-    ? [plugin[0], { ...plugin[1], android: { ...plugin[1].android, enableProguardInReleaseBuilds: false, enableShrinkResourcesInReleaseBuilds: false } }]
-    : plugin),
   name: 'OrionTV Danmaku Dev',
   version: '1.3.14',
   orientation: 'landscape',

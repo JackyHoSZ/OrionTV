@@ -17,7 +17,7 @@ export default function DanmakuTestScreen() {
   const loaded = status?.isLoaded;
   return <View style={styles.screen}>
     <Video ref={ref} source={require('../assets/danmaku-test.mp4')}
-      style={StyleSheet.absoluteFill} resizeMode={ResizeMode.CONTAIN} shouldPlay={shouldPlay} isLooping
+      style={StyleSheet.absoluteFill} resizeMode={ResizeMode.CONTAIN} shouldPlay={shouldPlay}
       useNativeControls={false} progressUpdateIntervalMillis={250} onPlaybackStatusUpdate={setStatus} />
     <OverlayProbe status={status} />
     <Text style={styles.status} accessibilityLabel={`PROBE loaded=${!!loaded} playing=${loaded && status.isPlaying} position=${loaded ? status.positionMillis : 0} commands=${commands} tv=${Platform.isTV} remote=${remote} rpc=${rpc}`}>
