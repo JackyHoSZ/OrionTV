@@ -31,7 +31,7 @@ export function reliableMatch(media: DanmakuMedia, matches: DanmakuMatch[]): Dan
   const wanted=canonicalTitle(media.title);
   const candidates=matches.filter(m=>{
     if (!wanted || ![wanted, media.englishTitle && canonicalTitle(media.englishTitle)].includes(canonicalTitle(m.animeTitle))) return false;
-    const year=m.animeTitle.match(/(?:19|20)\d{2}/)?.[0];
+    const year=m.animeTitle.match(/[（(\[]((?:19|20)\d{2})[)）\]]/)?.[1];
     if (media.year && year && media.year !== year) return false;
     const season=seasonOf(m.animeTitle);
     if (!media.movie && media.season && media.season > 1 && season !== media.season) return false;

@@ -17,6 +17,7 @@ class Handler(BaseHTTPRequestHandler):
   self.reply({},404)
  def do_GET(self):
   path=urllib.parse.urlsplit(self.path).path
+  if path=='/health':return self.reply({'fixture':True})
   if path=='/video.mp4':
    size=video.stat().st_size;start=0;end=size-1;partial=self.headers.get('Range')
    if partial:

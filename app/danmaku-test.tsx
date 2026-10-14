@@ -23,8 +23,8 @@ export default function DanmakuTestScreen(){
   let mounted=true;
   void(async()=>{
    await useDanmakuStore.getState().hydrate();
-   await useDanmakuStore.getState().setSettings({...DEFAULT_DANMAKU_SETTINGS,apiUrl:'http://10.0.2.2:8765',token:''});
-   const episodes=[2,3].map(n=>`http://10.0.2.2:8765/video.mp4?episode=${n}`);
+   await useDanmakuStore.getState().setSettings({...DEFAULT_DANMAKU_SETTINGS,apiUrl:'http://127.0.0.1:8765',token:''});
+   const episodes=[2,3].map(n=>`http://127.0.0.1:8765/video.mp4?episode=${n}`);
    useDetailStore.setState({detail:{id:1,title:'模拟剧第二季',year:'2024',type_name:'国产剧',poster:'',source:'fixture',source_name:'授权模拟源',episodes,episodes_titles:['第2集','第3集']}});
    usePlayerStore.setState({episodes:episodes.map((url,i)=>({url,title:`第${i+2}集`})),currentEpisodeIndex:0,videoRef:ref,shouldPlay:true,isLoading:false,showControls:true});
    if(mounted)setReady(true);

@@ -1,5 +1,5 @@
 """Real TV AVD validation against credential-free API fixtures and original AV controls."""
-import json,pathlib,re,subprocess,time,xml.etree.ElementTree as ET
+import json,pathlib,re,subprocess,time,urllib.request,xml.etree.ElementTree as ET
 OUT=pathlib.Path('test-results/emulator');OUT.mkdir(parents=True,exist_ok=True)
 for old in OUT.iterdir():
  if old.is_file():old.unlink()
@@ -28,11 +28,14 @@ def snapshot(name):
 server=subprocess.Popen(['python3','scripts/danmaku-fixture-server.py'],stdout=subprocess.DEVNULL,stderr=subprocess.PIPE)
 try:
  time.sleep(1)
+ assert server.poll() is None,'Fixture server exited'
+ assert json.load(urllib.request.urlopen('http://127.0.0.1:8765/health'))['fixture']
+ adb('reverse','tcp:8765','tcp:8765')
  adb('install','-r','-g','test-results/inspector/inspector.apk');adb('install','-r','artifacts/OrionTV-Danmaku-e2e.apk');adb('logcat','-c')
  adb('shell','am','start','-W','-a','android.intent.action.VIEW','-d','oriontv-danmaku://danmaku-test','com.oriontv.danmaku.dev');time.sleep(14)
  deadline=time.monotonic()+75
  playing=snapshot('01-playing')
- while playing['loading'] and time.monotonic()<deadline:
+ while (not playing['loaded'] or playing['loading']) and time.monotonic()<deadline:
   time.sleep(2);playing=snapshot('01-playing')
  assert playing['loaded'] and playing['playing'] and playing['comments']==10000 and playing['match']==2 and 0<playing['active']<=4,playing
  press('player-pause');time.sleep(3)
