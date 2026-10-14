@@ -33,7 +33,7 @@ export default function DanmakuTestScreen(){
  },[]);
  if(process.env.EXPO_PUBLIC_DANMAKU_E2E!=='1')return <Text>测试入口未启用</Text>;
  const status=p.status;const loaded=status?.isLoaded;
- const badge=`PROBE loaded=${!!loaded} playing=${loaded&&status.isPlaying} position=${loaded?status.positionMillis:0} rate=${loaded?status.rate:0} episode=${p.currentEpisodeIndex+2} comments=${d.comments.length} active=${active} enabled=${d.settings.enabled} density=${d.settings.perSecond} match=${d.match?.episodeId||0} loading=${d.loading}`;
+ const badge=`PROBE loaded=${!!loaded} playing=${loaded&&status.isPlaying} position=${loaded?status.positionMillis:0} rate=${loaded?status.rate:0} intent=${p.shouldPlay} nativeIntent=${loaded&&status.shouldPlay} episode=${p.currentEpisodeIndex+2} comments=${d.comments.length} active=${active} enabled=${d.settings.enabled} density=${d.settings.perSecond} match=${d.match?.episodeId||0} loading=${d.loading}`;
  return <View style={styles.screen}>
   {ready&&<NativeVideo key={currentEpisode?.url} ref={ref} style={StyleSheet.absoluteFill} {...videoProps}/>}
   <PlayerDanmaku onActiveCount={setActive}/>

@@ -275,11 +275,8 @@ const usePlayerStore = create<PlayerState>((set, get) => ({
       const next=!shouldPlay;
       set({shouldPlay:next});
       try {
-        if (!next) {
-          await videoRef?.current?.pauseAsync();
-        } else {
-          await videoRef?.current?.playAsync();
-        }
+        const result=next?await videoRef?.current?.playAsync():await videoRef?.current?.pauseAsync();
+        if(result)get().handlePlaybackStatusUpdate(result);
       } catch (error) {
         if(get().shouldPlay===next)set({shouldPlay});
         logger.debug("Failed to toggle play/pause:", error);
@@ -407,6 +404,8 @@ const usePlayerStore = create<PlayerState>((set, get) => ({
       set({ status: newStatus });
       return;
     }
+    // Native view events and promise results use different queues. Drop an older intent.
+    if(newStatus.shouldPlay!==get().shouldPlay)return;
 
     const { currentEpisodeIndex, episodes, outroStartTime, playEpisode } = get();
     const detail = useDetailStore.getState().detail;

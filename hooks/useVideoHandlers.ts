@@ -29,32 +29,41 @@ export const useVideoHandlers = ({
   const onLoad = useCallback(async () => {
     console.info(`[PERF] Video onLoad - video ready to play`);
     
+    const nativeVideo=videoRef.current;
+    const isCurrent=()=>{
+      const player=usePlayerStore.getState();
+      return videoRef.current===nativeVideo&&player.episodes[player.currentEpisodeIndex]?.url===currentEpisode?.url;
+    };
+    if(!isCurrent())return;
     try {
       // 1. 先设置位置（如果需要）
       const jumpPosition = initialPosition || introEndTime || 0;
       if (jumpPosition > 0) {
         console.info(`[PERF] Setting initial position to ${jumpPosition}ms`);
-        await videoRef.current?.setPositionAsync(jumpPosition);
+        await nativeVideo?.setPositionAsync(jumpPosition);
       }
+      if(!isCurrent())return;
       
       // 2. 显式调用播放以确保自动播放
       console.info(`[AUTOPLAY] Attempting to start playback after onLoad`);
-      if(usePlayerStore.getState().shouldPlay)await videoRef.current?.playAsync();
-      else await videoRef.current?.pauseAsync();
+      if(usePlayerStore.getState().shouldPlay)await nativeVideo?.playAsync();
+      else await nativeVideo?.pauseAsync();
       console.info(`[AUTOPLAY] Auto-play successful after onLoad`);
       
-      usePlayerStore.setState({ isLoading: false,loadedVideoUrl:currentEpisode?.url||null });
+      if(isCurrent())usePlayerStore.setState({ isLoading: false,loadedVideoUrl:currentEpisode?.url||null });
       console.info(`[PERF] Video loading complete - isLoading set to false`);
     } catch (error) {
       console.warn(`[AUTOPLAY] Failed to auto-play after onLoad:`, error);
       // 即使自动播放失败，也要设置加载完成状态
-      usePlayerStore.setState({ isLoading: false });
+      if(isCurrent())usePlayerStore.setState({ isLoading: false });
       // 不显示错误提示，因为自动播放失败是常见且预期的情况
     }
   }, [videoRef, initialPosition, introEndTime,currentEpisode?.url]);
 
   const onLoadStart = useCallback(() => {
     if (!currentEpisode?.url) return;
+    const player=usePlayerStore.getState();
+    if(player.episodes[player.currentEpisodeIndex]?.url!==currentEpisode.url)return;
     
     console.info(`[PERF] Video onLoadStart - starting to load video: ${currentEpisode.url.substring(0, 100)}...`);
     usePlayerStore.setState({ isLoading: true,loadedVideoUrl:null,status:null });

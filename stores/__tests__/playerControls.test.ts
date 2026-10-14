@@ -11,6 +11,8 @@ test('pause intent changes before native call and survives a late playing callba
  const pending=usePlayerStore.getState().togglePlayPause();
  usePlayerStore.getState().handlePlaybackStatusUpdate({...loaded,positionMillis:8500} as any);
  expect(usePlayerStore.getState().shouldPlay).toBe(false);finish({...loaded,isPlaying:false,shouldPlay:false});await pending;
+ usePlayerStore.getState().handlePlaybackStatusUpdate({...loaded,positionMillis:9000} as any);
+ expect(usePlayerStore.getState().status).toMatchObject({isPlaying:false,shouldPlay:false,positionMillis:8000});
  expect(pauseAsync).toHaveBeenCalledTimes(1);
 });
 test('rate intent changes before native call, so a status rerender cannot restore the old rate',async()=>{
