@@ -24,7 +24,14 @@ export default function DanmakuTestScreen() {
     </Text>
     <View style={styles.controls}>
       <StyledButton text="暂停 / 继续" accessibilityLabel="probe-pause" hasTVPreferredFocus
-        onPress={() => { setCommands(n=>n+1); setShouldPlay(value=>!value); }} />
+        onPress={async () => {
+          setCommands(n=>n+1);
+          const current=await ref.current?.getStatusAsync();
+          if(current?.isLoaded){
+            const next=current.isPlaying?await ref.current?.pauseAsync():await ref.current?.playAsync();
+            if(next?.isLoaded)setShouldPlay(next.shouldPlay);
+          }
+        }} />
       <StyledButton text="快进 10 秒" accessibilityLabel="probe-seek"
         onPress={() => loaded && ref.current?.setPositionAsync(status.positionMillis + 10000)} />
     </View>
