@@ -15,7 +15,7 @@ with zipfile.ZipFile(apk) as source,zipfile.ZipFile(patched,'w') as dest:
   dest.writestr(entry,bundles[0].read_bytes() if entry.filename=='assets/index.android.bundle' else source.read(entry.filename))
 tools=pathlib.Path(os.environ.get('ANDROID_HOME','/usr/local/lib/android/sdk'))/'build-tools/34.0.0'
 aligned=apk.with_name('patched-aligned.apk')
-subprocess.run([str(tools/'zipalign'),'-f','4',str(patched),str(aligned)],check=True)
+subprocess.run([str(tools/'zipalign'),'-p','-f','4',str(patched),str(aligned)],check=True)
 key=pathlib.Path(os.environ['RUNNER_TEMP'])/'orion-probe.p12';key.write_bytes(base64.b64decode(os.environ['ORION_SIGNING_P12']));key.chmod(0o600)
 try:
  subprocess.run([str(tools/'apksigner'),'sign','--ks',str(key),'--ks-pass','env:ORION_SIGNING_PASSWORD','--out',str(apk),str(aligned)],check=True)
