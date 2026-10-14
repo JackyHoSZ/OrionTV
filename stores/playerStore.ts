@@ -19,6 +19,7 @@ interface PlayerState {
   episodes: Episode[];
   status: AVPlaybackStatus | null;
   shouldPlay: boolean;
+  loadedVideoUrl: string | null;
   isLoading: boolean;
   showControls: boolean;
   showEpisodeModal: boolean;
@@ -67,6 +68,7 @@ const usePlayerStore = create<PlayerState>((set, get) => ({
   currentEpisodeIndex: -1,
   status: null,
   shouldPlay: true,
+  loadedVideoUrl: null,
   isLoading: true,
   showControls: false,
   showEpisodeModal: false,
@@ -220,6 +222,8 @@ const usePlayerStore = create<PlayerState>((set, get) => ({
       set({
         isLoading: false,
         shouldPlay: true,
+        loadedVideoUrl: null,
+        status: null,
         currentEpisodeIndex: episodeIndex,
         initialPosition: position || initialPositionFromRecord,
         playbackRate: savedPlaybackRate,
@@ -243,17 +247,21 @@ const usePlayerStore = create<PlayerState>((set, get) => ({
   playEpisode: async (index) => {
     const { episodes, videoRef } = get();
     if (index >= 0 && index < episodes.length) {
+      const sameVideo=episodes[get().currentEpisodeIndex]?.url===episodes[index].url;
       set({
         currentEpisodeIndex: index,
         shouldPlay: true,
         status: null,
+        loadedVideoUrl: null,
+        isLoading: true,
         showNextEpisodeOverlay: false,
         initialPosition: 0,
         progressPosition: 0,
         seekPosition: 0,
       });
       try {
-        await videoRef?.current?.replayAsync();
+        // A changed URL mounts its own Video and uses the normal onLoad/autoplay path.
+        if(sameVideo){await videoRef?.current?.replayAsync();set({loadedVideoUrl:episodes[index].url,isLoading:false});}
       } catch (error) {
         logger.debug("Failed to replay video:", error);
         Toast.show({ type: "error", text1: "播放失败" });
@@ -467,6 +475,7 @@ const usePlayerStore = create<PlayerState>((set, get) => ({
       currentEpisodeIndex: 0,
       status: null,
       shouldPlay: true,
+      loadedVideoUrl: null,
       isLoading: true,
       showControls: false,
       showEpisodeModal: false,

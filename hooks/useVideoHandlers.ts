@@ -43,7 +43,7 @@ export const useVideoHandlers = ({
       else await videoRef.current?.pauseAsync();
       console.info(`[AUTOPLAY] Auto-play successful after onLoad`);
       
-      usePlayerStore.setState({ isLoading: false });
+      usePlayerStore.setState({ isLoading: false,loadedVideoUrl:currentEpisode?.url||null });
       console.info(`[PERF] Video loading complete - isLoading set to false`);
     } catch (error) {
       console.warn(`[AUTOPLAY] Failed to auto-play after onLoad:`, error);
@@ -51,13 +51,13 @@ export const useVideoHandlers = ({
       usePlayerStore.setState({ isLoading: false });
       // 不显示错误提示，因为自动播放失败是常见且预期的情况
     }
-  }, [videoRef, initialPosition, introEndTime]);
+  }, [videoRef, initialPosition, introEndTime,currentEpisode?.url]);
 
   const onLoadStart = useCallback(() => {
     if (!currentEpisode?.url) return;
     
     console.info(`[PERF] Video onLoadStart - starting to load video: ${currentEpisode.url.substring(0, 100)}...`);
-    usePlayerStore.setState({ isLoading: true });
+    usePlayerStore.setState({ isLoading: true,loadedVideoUrl:null,status:null });
   }, [currentEpisode?.url]);
 
   const onError = useCallback((error: any) => {

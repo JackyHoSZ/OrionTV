@@ -1,7 +1,10 @@
 """Cloud-only probe JS rebuild, reusing the already compiled unchanged native engine."""
 import pathlib,zipfile,subprocess,os,base64,re
 apk=pathlib.Path('artifacts/OrionTV-Danmaku-e2e.apk')
+video_apk=apk
 with zipfile.ZipFile(apk) as z:
+ if not any(n.endswith('.mp4') for n in z.namelist()):video_apk=pathlib.Path('.fixture-baseline/artifacts/OrionTV-Danmaku-e2e.apk')
+with zipfile.ZipFile(video_apk) as z:
  videos=[n for n in z.namelist() if n.endswith('.mp4')]
  assert len(videos)==1
  pathlib.Path('assets/danmaku-test.mp4').write_bytes(z.read(videos[0]))

@@ -12,14 +12,14 @@ export const PlayerDanmaku=memo(function PlayerDanmaku({onActiveCount}:{onActive
  const detail=useDetailStore(s=>s.detail);
  const index=usePlayerStore(s=>s.currentEpisodeIndex);
  const status=usePlayerStore(s=>s.status);
+ const loadedVideoUrl=usePlayerStore(s=>s.loadedVideoUrl);
  const comments=useDanmakuStore(s=>s.comments);
  const settings=useDanmakuStore(s=>s.settings);
  const mediaOffset=useDanmakuStore(s=>s.mediaOffset);
  const loaded=status?.isLoaded;
- const uri=loaded?status.uri:'';
  const duration=loaded?status.durationMillis:undefined;
- const media=useMemo(()=>detail&&index>=0&&loaded&&uri===detail.episodes[index]
-  ?playbackMedia(detail,index,duration?duration/1000:undefined):null,[detail,index,loaded,uri,duration]);
+ const media=useMemo(()=>detail&&index>=0&&loaded&&loadedVideoUrl===detail.episodes[index]
+  ?playbackMedia(detail,index,duration?duration/1000:undefined):null,[detail,index,loaded,loadedVideoUrl,duration]);
  const identity=media?mediaKey(media)+sourceKey(media):'';
  const display=useMemo(()=>({...settings,offset:settings.offset+mediaOffset}),[settings,mediaOffset]);
  useEffect(()=>{

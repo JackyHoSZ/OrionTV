@@ -23,7 +23,7 @@ public class Inspector extends Instrumentation {
       if(focus!=null){
         AccessibilityNodeInfo root=automation.getRootInActiveWindow();
         AccessibilityNodeInfo target=find(root,focus);
-        if(target==null||!target.performAction(AccessibilityNodeInfo.ACTION_FOCUS))throw new IllegalStateException("Focus target unavailable");
+        if(target==null||(!target.isFocused()&&!target.performAction(AccessibilityNodeInfo.ACTION_FOCUS)))throw new IllegalStateException("Focus target unavailable");
         SystemClock.sleep(300);
       }
       if(keys!=null){

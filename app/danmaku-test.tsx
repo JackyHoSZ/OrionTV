@@ -35,7 +35,7 @@ export default function DanmakuTestScreen(){
  const status=p.status;const loaded=status?.isLoaded;
  const badge=`PROBE loaded=${!!loaded} playing=${loaded&&status.isPlaying} position=${loaded?status.positionMillis:0} rate=${loaded?status.rate:0} episode=${p.currentEpisodeIndex+2} comments=${d.comments.length} active=${active} enabled=${d.settings.enabled} density=${d.settings.perSecond} match=${d.match?.episodeId||0} loading=${d.loading}`;
  return <View style={styles.screen}>
-  {ready&&<NativeVideo ref={ref} style={StyleSheet.absoluteFill} {...videoProps}/>}
+  {ready&&<NativeVideo key={currentEpisode?.url} ref={ref} style={StyleSheet.absoluteFill} {...videoProps}/>}
   <PlayerDanmaku onActiveCount={setActive}/>
   <PlayerControls showControls setShowControls={p.setShowControls}/>
   <Text style={styles.badge} accessibilityLabel={badge}>{badge}</Text>

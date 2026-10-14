@@ -28,5 +28,6 @@ yarn-errors.log
 coverage/
 # Danmaku development artifacts and generated native fixture
 test-results/
+__pycache__/
 artifacts/
 assets/danmaku-test.mp4

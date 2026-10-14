@@ -43,6 +43,8 @@ export function reliableMatch(media: DanmakuMedia, matches: DanmakuMatch[]): Dan
   return candidates.length === 1 ? candidates[0] : null;
 }
 export function mediaKey(media: DanmakuMedia): string {
-  return JSON.stringify([canonicalTitle(media.title), media.year || '', media.movie ? 'movie' : 'series', media.season ?? '?', media.episode ?? '?', media.episodeTitle || '']);
+  // A known episode number survives differing source labels such as 第2集 / 第二集.
+  const label=media.movie?'':media.episode!==undefined?'':(media.episodeTitle||'').replace(/\s/g,'').toLowerCase();
+  return JSON.stringify([canonicalTitle(media.title), media.year || '', media.movie ? 'movie' : 'series', media.movie?'':media.season ?? '?', media.movie?'':media.episode ?? '?', label]);
 }
 export function sourceKey(media: DanmakuMedia): string { return JSON.stringify([media.source, media.sourceId]); }

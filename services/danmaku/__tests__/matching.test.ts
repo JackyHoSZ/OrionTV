@@ -12,4 +12,12 @@ describe('safe automatic identities',()=>{
  test('unusual starting episode and explicit native episode labels',()=>{expect(episodeOf('第 12 集')).toBe(12);expect(episodeOf('第十集')).toBe(10);expect(seasonOf('剧 Season 2')).toBe(2);expect(episodeOf('S03E09')).toBe(9);});
  test('manual mapping identity separates season/year/source without tying it to one URL',()=>{expect(mediaKey(media)).not.toBe(mediaKey({...media,season:1}));expect(mediaKey(media)).not.toBe(mediaKey({...media,year:'2019'}));expect(mediaKey(media)).toBe(mediaKey({...media,source:'b'}));expect(sourceKey(media)).not.toBe(sourceKey({...media,source:'b'}));});
  test('canonical title preserves the work identity',()=>expect(canonicalTitle(match.animeTitle)).toBe('庆余年'));
+ test('known episode identities survive alternate labels while special episodes stay distinct',()=>{
+  expect(mediaKey(media)).toBe(mediaKey({...media,source:'b',episodeTitle:'第二集'}));
+  expect(mediaKey(media)).not.toBe(mediaKey({...media,episode:10,episodeTitle:'第10集'}));
+  expect(mediaKey({...media,episode:undefined,episodeTitle:'特别篇'})).not.toBe(mediaKey({...media,episode:undefined,episodeTitle:'花絮'}));
+ });
+ test('movie identity does not depend on source episode labels',()=>{
+  expect(mediaKey({...media,movie:true,episodeTitle:'正片'})).toBe(mediaKey({...media,movie:true,season:undefined,episode:undefined,episodeTitle:'HD'}));
+ });
 });
