@@ -21,9 +21,10 @@ public class Inspector extends Instrumentation {
     try {
       UiAutomation automation=getUiAutomation(UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES);
       if(focus!=null){
-        AccessibilityNodeInfo root=automation.getRootInActiveWindow();
+        AccessibilityNodeInfo root=root(automation);
         AccessibilityNodeInfo target=find(root,focus);
-        if(target==null||(!target.isFocused()&&!target.performAction(AccessibilityNodeInfo.ACTION_FOCUS)))throw new IllegalStateException("Focus target unavailable");
+        if(target==null)throw new IllegalStateException("TARGET_NOT_FOUND");
+        if(!target.isFocused()&&!target.performAction(AccessibilityNodeInfo.ACTION_FOCUS))throw new IllegalStateException("FOCUS_REFUSED");
         SystemClock.sleep(300);
       }
       if(keys!=null){
@@ -36,14 +37,17 @@ public class Inspector extends Instrumentation {
         }
         result.putString("keys",keys);finish(Activity.RESULT_OK,result);return;
       }
-      AccessibilityNodeInfo root=automation.getRootInActiveWindow();
-      for(int i=0;i<20 && root==null;i++){Thread.sleep(100);root=automation.getRootInActiveWindow();}
-      if(root==null) throw new IllegalStateException("No accessibility root");
+      AccessibilityNodeInfo root=root(automation);
       StringWriter file=new StringWriter();
       XmlSerializer xml=Xml.newSerializer();xml.setOutput(file);xml.startDocument("UTF-8",true);
       xml.startTag(null,"hierarchy");write(xml,root,0);xml.endTag(null,"hierarchy");xml.endDocument();root.recycle();
       result.putString("xml",file.toString());finish(Activity.RESULT_OK,result);
-    }catch(Exception e){result.putString("error",e.getClass().getSimpleName());finish(Activity.RESULT_CANCELED,result);}
+    }catch(Exception e){result.putString("error",e instanceof IllegalStateException?e.getMessage():e.getClass().getSimpleName());finish(Activity.RESULT_CANCELED,result);}
+  }
+  private AccessibilityNodeInfo root(UiAutomation automation){
+    AccessibilityNodeInfo root=automation.getRootInActiveWindow();
+    for(int i=0;i<30&&root==null;i++){SystemClock.sleep(100);root=automation.getRootInActiveWindow();}
+    if(root==null)throw new IllegalStateException("NO_ACCESSIBILITY_ROOT");return root;
   }
   private AccessibilityNodeInfo find(AccessibilityNodeInfo node,String label){
     if(node==null)return null;
