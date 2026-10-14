@@ -1,11 +1,13 @@
 """Credential-free API and authorized synthetic media for the cloud AVD only."""
 from http.server import ThreadingHTTPServer,BaseHTTPRequestHandler
 from pathlib import Path
-import json,re,urllib.parse
+import json,re,urllib.parse,time
 video=Path('assets/danmaku-test.mp4')
 class Handler(BaseHTTPRequestHandler):
  def log_message(self,*args): pass
  def reply(self,data,status=200):
+  label=next((name for name in ['match','comment','bangumi','search'] if '/'+name in self.path),'other')
+  with Path('test-results/emulator/fixture-requests.jsonl').open('a') as log:log.write(json.dumps({'time':time.time(),'operation':label,'status':status,'comments':len(data.get('comments',[]))})+'\n')
   body=json.dumps(data,ensure_ascii=False).encode();self.send_response(status);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(body)));self.end_headers();self.wfile.write(body)
  def do_POST(self):
   body=json.loads(self.rfile.read(int(self.headers.get('Content-Length','0'))) or b'{}')

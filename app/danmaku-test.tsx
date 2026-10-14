@@ -39,6 +39,7 @@ export default function DanmakuTestScreen(){
   <PlayerDanmaku onActiveCount={setActive}/>
   <PlayerControls showControls setShowControls={p.setShowControls}/>
   <Text style={styles.badge} accessibilityLabel={badge}>{badge}</Text>
+  <Text style={styles.message} accessibilityLabel={'DANMAKU_STATUS '+d.message}>{d.message}</Text>
   <View style={styles.actions}>
    <StyledButton text="后退10秒" accessibilityLabel="probe-back" onPress={()=>p.seek(-10000)}/>
    <StyledButton text="前进10秒" accessibilityLabel="probe-forward" onPress={()=>p.seek(10000)}/>
@@ -47,4 +48,4 @@ export default function DanmakuTestScreen(){
   </View>
  </View>;
 }
-const styles=StyleSheet.create({screen:{flex:1,backgroundColor:'#000'},badge:{position:'absolute',top:8,left:8,color:'#fff',fontSize:13,backgroundColor:'#111'},actions:{position:'absolute',top:38,left:8,right:8,flexDirection:'row',gap:8}});
+const styles=StyleSheet.create({screen:{flex:1,backgroundColor:'#000'},badge:{position:'absolute',top:8,left:8,color:'#fff',fontSize:13,backgroundColor:'#111'},message:{position:'absolute',top:95,left:8,color:'#fff',fontSize:16},actions:{position:'absolute',top:38,left:8,right:8,flexDirection:'row',gap:8}});

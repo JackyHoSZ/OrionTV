@@ -22,6 +22,7 @@ def snapshot(name):
  fields=dict(re.findall(r'(\w+)=(\S+)',badge[0]))
  parsed={k:(True if v=='true' else False if v=='false' else float(v)) for k,v in fields.items()}
  parsed['focus']=[n.get('content-desc') for n in root.iter('node') if n.get('focused')=='true']
+ parsed['message']=next((n.get('content-desc')[15:] for n in root.iter('node') if n.get('content-desc','').startswith('DANMAKU_STATUS ')),'')
  (OUT/(name+'.json')).write_text(json.dumps(parsed,indent=2));print(name,parsed)
  return parsed
 server=subprocess.Popen(['python3','scripts/danmaku-fixture-server.py'],stdout=subprocess.DEVNULL,stderr=subprocess.PIPE)
@@ -29,7 +30,11 @@ try:
  time.sleep(1)
  adb('install','-r','-g','test-results/inspector/inspector.apk');adb('install','-r','artifacts/OrionTV-Danmaku-e2e.apk');adb('logcat','-c')
  adb('shell','am','start','-W','-a','android.intent.action.VIEW','-d','oriontv-danmaku://danmaku-test','com.oriontv.danmaku.dev');time.sleep(14)
- playing=snapshot('01-playing');assert playing['loaded'] and playing['playing'] and playing['comments']==10000 and playing['match']==2 and 0<playing['active']<=4,playing
+ deadline=time.monotonic()+75
+ playing=snapshot('01-playing')
+ while playing['loading'] and time.monotonic()<deadline:
+  time.sleep(2);playing=snapshot('01-playing')
+ assert playing['loaded'] and playing['playing'] and playing['comments']==10000 and playing['match']==2 and 0<playing['active']<=4,playing
  press('player-pause');time.sleep(3)
  paused=snapshot('02-paused');assert not paused['playing'],paused
  time.sleep(2);stable=snapshot('03-paused-stable');assert abs(stable['position']-paused['position'])<200,(paused,stable)

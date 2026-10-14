@@ -40,3 +40,7 @@ test('turning danmaku off cancels an in-flight load without affecting playback',
  expect(useDanmakuStore.getState().comments).toEqual([]);
  useDanmakuStore.getState().clear();
 });
+test('concurrent settings edits merge after persistence rather than restoring stale fields',async()=>{
+ await Promise.all([useDanmakuStore.getState().setSettings({fontSize:30}),useDanmakuStore.getState().setSettings({opacity:0.5})]);
+ expect(useDanmakuStore.getState().settings).toMatchObject({fontSize:30,opacity:0.5});
+});

@@ -7,6 +7,7 @@ import { DEFAULT_DANMAKU_SETTINGS, DanmakuSettings, DanmakuMedia, DanmakuComment
 
 const latest=new LatestDanmakuRequest();
 let client:DanmakuAPI|null=null;let connection='';let hydratePromise:Promise<void>|null=null;
+let settingsWrites:Promise<void>=Promise.resolve();
 function api(settings:DanmakuSettings):DanmakuAPI {
  const root=apiRoot(settings.apiUrl,settings.token);
  if(!client || connection!==root){client=new DanmakuAPI(settings.apiUrl,settings.token);connection=root;}
@@ -38,14 +39,16 @@ export const useDanmakuStore=create<DanmakuState>((set,get)=>({
    catch{set({hydrated:true,message:'弹幕安全存储无法读取，请重新配置连接'});}
   })();return hydratePromise;
  },
- setSettings:async patch=>{
+ setSettings:patch=>{
+  const change=settingsWrites.catch(()=>{}).then(async()=>{
   const before=get().settings;const settings=normalizeSettings({...before,...patch});
   if(patch.apiUrl!==undefined || patch.token!==undefined)apiRoot(settings.apiUrl,settings.token);
   try{await DanmakuStorage.saveSettings(settings);set({settings});}
   catch{set({message:'弹幕设置保存失败，请重试'});throw new DanmakuError('CONFIG');}
-  if(before.apiUrl!==settings.apiUrl || before.token!==settings.token){latest.cancel();client=null;set({comments:[],match:null});if(get().media)await get().bind(get().media!);}
+  if(before.apiUrl!==settings.apiUrl || before.token!==settings.token){latest.cancel();client=null;set({comments:[],match:null});if(get().media)void get().bind(get().media!);}
   else if(!settings.enabled){latest.cancel();set({loading:false});}
-  else if(settings.enabled && settings.autoLoad && !get().loading && !get().comments.length && get().media)await get().reload();
+  else if(settings.enabled && settings.autoLoad && !get().loading && !get().comments.length && get().media)void get().reload();
+  });settingsWrites=change;return change;
  },
  bind:async media=>{
   latest.cancel();set({media,comments:[],match:null,mediaOffset:0,loading:false,message:''});
@@ -54,7 +57,7 @@ export const useDanmakuStore=create<DanmakuState>((set,get)=>({
   if(!own.isCurrent())return;
   const settings=get().settings;
   if(!configured(settings)){if(own.isCurrent())set({message:'请先填写普通查询 Token 或完整弹幕 API 地址'});return;}
-  const offset=await DanmakuStorage.getOffset(offsetKey(settings,media));
+  let offset=0;try{offset=await DanmakuStorage.getOffset(offsetKey(settings,media));}catch{/* Display failure must never stop video or matching. */}
   if(!own.isCurrent())return;set({mediaOffset:offset});
   if(settings.autoLoad && settings.enabled)await get().reload(true);
  },
@@ -75,6 +78,7 @@ export const useDanmakuStore=create<DanmakuState>((set,get)=>({
     if(!selected && media.englishTitle){const matches=await service.match(matchFileName({...media,title:media.englishTitle})||media.englishTitle,own.signal);selected=reliableMatch(media,matches);}
    }
    if(!selected){if(own.isCurrent())set({loading:false,message:'没有可靠的唯一匹配，请手动搜索选择'});return;}
+   if(own.isCurrent())set({message:'正在下载弹幕'});
    const result=await service.comments(selected.episodeId,own.signal);
    if(!own.isCurrent())return;
    if(automatic && !saved && media.duration && result.duration && Math.abs(media.duration-result.duration)/media.duration>0.2){
