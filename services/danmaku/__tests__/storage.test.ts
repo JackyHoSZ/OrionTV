@@ -27,3 +27,8 @@ test('display-only edits persist without rewriting an unchanged encrypted connec
 test('malformed persisted settings are bounded, preventing unbounded density or animation values',()=>{
  expect(normalizeSettings({...defaults,maxOnScreen:999,fontSize:-5,opacity:99,perSecond:999})).toMatchObject({maxOnScreen:24,fontSize:16,opacity:1,perSecond:2});
 });
+test('rematching removes only the current manual entry',async()=>{
+ const match={animeId:1,animeTitle:'test',episodeId:2,episodeTitle:'第2集'};
+ await DanmakuStorage.saveMatch('current',match);await DanmakuStorage.saveMatch('other',match);
+ await DanmakuStorage.removeMatch('current');expect(await DanmakuStorage.getMatch('current')).toBeNull();expect(await DanmakuStorage.getMatch('other')).toMatchObject({episodeId:2});
+});

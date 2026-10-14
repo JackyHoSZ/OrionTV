@@ -59,7 +59,7 @@ export function DanmakuPanel({context='player'}:{context?:'player'|'global'}){
   <View style={styles.backdrop}><TVFocusGuideView autoFocus trapFocusLeft trapFocusRight trapFocusUp trapFocusDown style={styles.panel}>
    <View style={styles.header}><Text style={styles.title}>{context==='global'?'全局弹幕设置':'播放弹幕设置'}</Text><StyledButton text="返回播放 / 关闭" accessibilityLabel="danmaku-close" hasTVPreferredFocus onPress={close}/></View>
    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.body}>
-    <Text style={styles.status}>{busy||d.settingsSaving?'处理中…':notice||d.message}</Text>
+    <Text accessibilityLabel="danmaku-panel-status" style={styles.status}>{busy||d.settingsSaving?'处理中…':notice||d.message}</Text>
     {context==='player'&&<Text style={styles.hint}>{d.media?.title} {d.media?.year} {d.media?.movie?'电影':`第${d.media?.season||'?'}季 · ${d.media?.episodeTitle||'集数未知'}`} {'\n'}{d.match?`当前：${d.match.animeTitle} / ${d.match.episodeTitle}（${d.comments.length} 条）`:'尚未选择弹幕'}</Text>}
     {tab==='settings'?<>
      {context==='global'&&<DanmakuConnection/>}

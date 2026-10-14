@@ -18,7 +18,8 @@ public class Inspector extends Instrumentation {
   private String keys;
   private String focus;
   private String text;
-  @Override public void onCreate(Bundle arguments) { super.onCreate(arguments);keys=arguments.getString("keys");focus=arguments.getString("focus");text=arguments.getString("text");start(); }
+  private boolean compact;
+  @Override public void onCreate(Bundle arguments) { super.onCreate(arguments);keys=arguments.getString("keys");focus=arguments.getString("focus");text=arguments.getString("text");compact="1".equals(arguments.getString("compact"));start(); }
   @Override public void onStart() {
     Bundle result=new Bundle();
     try {
@@ -48,7 +49,13 @@ public class Inspector extends Instrumentation {
       AccessibilityNodeInfo root=root(automation);
       StringWriter file=new StringWriter();
       XmlSerializer xml=Xml.newSerializer();xml.setOutput(file);xml.startDocument("UTF-8",true);
-      xml.startTag(null,"hierarchy");write(xml,root,0);xml.endTag(null,"hierarchy");xml.endDocument();root.recycle();
+      xml.startTag(null,"hierarchy");
+      if(compact){
+        for(AccessibilityNodeInfo node:root.findAccessibilityNodeInfosByText("PROBE loaded=")){if(node.getContentDescription()!=null&&node.getContentDescription().toString().startsWith("PROBE "))write(xml,node,0);}
+        for(AccessibilityNodeInfo node:root.findAccessibilityNodeInfosByText("DANMAKU_STATUS "))write(xml,node,0);
+        AccessibilityNodeInfo focused=root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT);if(focused!=null)write(xml,focused,0);
+      }else write(xml,root,0);
+      xml.endTag(null,"hierarchy");xml.endDocument();root.recycle();
       result.putString("xml",file.toString());finish(Activity.RESULT_OK,result);
     }catch(Exception e){result.putString("error",e instanceof IllegalStateException?e.getMessage():e.getClass().getSimpleName());finish(Activity.RESULT_CANCELED,result);}
   }
@@ -59,15 +66,20 @@ public class Inspector extends Instrumentation {
   }
   private AccessibilityNodeInfo find(AccessibilityNodeInfo node,String label){
     if(node==null)return null;
+    for(AccessibilityNodeInfo candidate:node.findAccessibilityNodeInfosByText(label))if(label.contentEquals(candidate.getContentDescription()==null?"":candidate.getContentDescription()))return candidate;
+    return findDeep(node,label);
+  }
+  private AccessibilityNodeInfo findDeep(AccessibilityNodeInfo node,String label){
+    if(node==null)return null;
     if(label.contentEquals(node.getContentDescription()==null?"":node.getContentDescription()))return node;
     if(node.getClassName()!=null&&node.getClassName().toString().startsWith("com.horcrux.svg"))return null;
-    for(int i=0;i<node.getChildCount();i++){AccessibilityNodeInfo result=find(node.getChild(i),label);if(result!=null)return result;}
+    for(int i=0;i<node.getChildCount();i++){AccessibilityNodeInfo result=findDeep(node.getChild(i),label);if(result!=null)return result;}
     return null;
   }
   private void write(XmlSerializer xml,AccessibilityNodeInfo node,int depth)throws Exception {
     if(depth>60)return;
     CharSequence label=node.getContentDescription();
-    if(label!=null&&(label.toString().startsWith("PROBE ")||label.toString().startsWith("DANMAKU_STATUS ")))node.refresh();
+    if(label!=null&&(label.toString().startsWith("PROBE ")||label.toString().startsWith("DANMAKU_STATUS ")||label.toString().equals("danmaku-panel-status")))node.refresh();
     xml.startTag(null,"node");
     xml.attribute(null,"text",node.getText()==null?"":node.getText().toString());
     xml.attribute(null,"content-desc",node.getContentDescription()==null?"":node.getContentDescription().toString());

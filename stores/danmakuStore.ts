@@ -70,11 +70,12 @@ export const useDanmakuStore=create<DanmakuState>((set,get)=>({
   try{
    const service=api(settings);const saved=await DanmakuStorage.getMatch(savedKey(settings,media));
    let selected:DanmakuMatch|null=null;
+   let reusedManual=false;
    if(saved){
     // IDs can change after a server restart. Resolve saved title/source and episode again.
     const animes=await service.search(saved.animeTitle.replace(/from\s+.*$/i,'').replace(/[【\[].*?[】\]]/g,'').replace(/[（(](?:19|20)\d{2}[)）]/g,'').trim(),own.signal);
     const anime=animes.find(a=>a.animeTitle===saved.animeTitle);
-    if(anime){const episodes=await service.episodes(anime,own.signal);const found=episodes.filter(e=>e.episodeTitle===saved.episodeTitle);if(found.length===1)selected=found[0];}
+    if(anime){const episodes=await service.episodes(anime,own.signal);const found=episodes.filter(e=>e.episodeTitle===saved.episodeTitle);if(found.length===1){selected=found[0];reusedManual=true;}}
    }
    if(!selected){const name=matchFileName(media);if(!name){if(own.isCurrent())set({loading:false,message:'季集信息不明确，请手动搜索选择弹幕'});return;}
     const matches=await service.match(name,own.signal);selected=reliableMatch(media,matches);
@@ -84,7 +85,7 @@ export const useDanmakuStore=create<DanmakuState>((set,get)=>({
    if(own.isCurrent())set({message:'正在下载弹幕'});
    const result=await service.comments(selected.episodeId,own.signal);
    if(!own.isCurrent())return;
-   if(automatic && !saved && media.duration && result.duration && Math.abs(media.duration-result.duration)/media.duration>0.2){
+   if(automatic && !reusedManual && media.duration && result.duration && Math.abs(media.duration-result.duration)/media.duration>0.2){
     set({loading:false,message:'弹幕与视频时长差异较大，请手动确认来源'});return;
    }
    set({comments:result.comments,match:selected,loading:false,message:result.comments.length?`已加载 ${result.comments.length} 条弹幕`:'当前来源没有弹幕'});

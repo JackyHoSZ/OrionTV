@@ -1,81 +1,81 @@
 # Android TV 外部弹幕
 
-开发分支：`feature/android-tv-danmaku`。基线：OrionTV `41c7a600` / 1.3.14。
+本分支为 `feature/android-tv-danmaku`，基于 OrionTV 1.3.14 / `41c7a600`。保留 Expo 51、React Native TV 0.74.2 和 Expo AV 14.0.7；未升级或替换播放器内核。仅面向 Android TV，独立包名为 `com.oriontv.danmaku.dev`。
 
-## 开发前核实
+## 架构
 
-- 保留 Expo SDK 51、React Native TVOS 0.74.2、Expo AV 14.0.7。
-- `app/play.tsx` 使用 Expo AV `Video`；`useVideoHandlers` 接收原生 `AVPlaybackStatus`，位置和时长单位为毫秒。
-- Android Expo AV 实现为 `VideoTextureView`，不是置顶 SurfaceView。原控制栏作为视频后的 React Native View 叠加。
-- `playerStore` 保存暂停、缓冲、倍速、播放进度和当前集序号；`detailStore` 保存片名、年份和当前播放源。
-- MoonTVPlus `/api/search/one` 实际提供 `episodes_titles`，必须优先使用真实标签，不能仅凭数组序号假设集号。
-- 后端连接通过原 `services/api.ts`，弹幕使用独立服务模块。正式 MoonTVPlus、D1 和 VPS 配置不做修改。
-- Stage A 的 `danmaku-test` 入口仅 CI 编译开关开启，使用自行生成的视频和模拟文本；发布给用户的 APK 不开启该入口。
+```mermaid
+flowchart LR
+  M[原播放器元数据与真实播放状态] --> S[danmakuStore]
+  S --> A[独立 danmu_api 客户端]
+  A --> V[现有 VPS]
+  S --> T[排序、抽样、二分索引与轨道调度]
+  M --> T
+  T --> O[有限 Animated.Text 覆盖池]
+  P[遥控器面板] --> S
+  S --> K[SecureStore 连接信息]
+  S --> L[独立本地显示设置、映射与偏移]
+```
+
+- `services/danmaku/api.ts`：请求、错误归一化、取消、合并在途请求、会话缓存、弹幕解析。
+- `matching.ts` / `media.ts`：电影、真实季集标签和保守匹配；区分影视身份、季集身份及播放源身份。
+- `timeline.ts`：视频秒内公平抽样、独立同屏上限、去重、二分跳转、独占轨道。
+- `storage.ts`：专用存储命名空间，连接加密，显示与映射独立保存。
+- `stores/danmakuStore.ts`：自动/手动匹配、请求世代、保存队列和失败降级。
+- `components/danmaku/`：覆盖组件、播放器/全局设置面板、连接输入。
+
+现有 `Video` 仍使用 Expo AV 的 TextureView。覆盖层位于视频之后、原控制栏之前，不响应指针或遥控器焦点。视频组件使用 memo，弹幕加载不驱动整个视频组件重渲染。
 
 ## API 协议
 
-`POST /api/v2/match` 只使用 `{fileName}`，响应为 `success/isMatched/matches`。
-搜索为 `/search/anime?keyword=`；详情为 `/bangumi/{bangumiId或animeId}`；逐集搜索为 `/search/episodes?anime=`；弹幕为 `/comment/{episodeId}?format=json&duration=true`。
+支持 `https://主机`、`https://主机/TOKEN`、`https://主机/TOKEN/api/v2`。单独输入 Token 时不重复追加同一个 Token。推荐根域名与普通 Token 分开填写；不要使用 ADMIN_TOKEN。
 
-普通 Token 是 URL 路径中的一个片段。服务模块接受主机、主机/Token、主机/Token/api/v2，并避免重复追加同一个 Token。禁止填入 ADMIN_TOKEN。
+| 请求 | 参数 / 返回 |
+|---|---|
+| POST `/api/v2/match` | JSON `{fileName}`；验证 `success/isMatched/matches` |
+| GET `/search/anime` | `keyword`；返回 `animes` |
+| GET `/search/episodes` | `anime`；客户端提供此协议方法 |
+| GET `/bangumi/:animeId` | 使用兼容 API 的数值 **animeId**，返回 `bangumi.episodes` |
+| GET `/comment/:episodeId` | `format=json&duration=true`；返回 `comments/videoDuration` |
 
-弹幕 JSON 为 `{comments:[{cid,p,m,t}],videoDuration,count}`。`p` 包含秒数、模式及十进制 RGB；模式 1 滚动、5 顶部、4 底部。规范化结构为 `{id,time,text,color,mode}`，按秒排序。无效时间、空内容和不支持的模式丢弃。
+`bangumiId` 可能是腾讯等站点自己的字符串 ID，不能代替 `animeId` 调用详情接口。真实服务对“庆余年第二季”的搜索返回 360、tencent、aiyifan、animeko；360 和腾讯的实际剧集接口均返回正常。包装层的 `seasons.name` 可能统一写成 `Season 1`，不能把它当作真实第一季；客户端使用影视元数据与作品标题中的真实季数。
 
-45 秒超时；网络或 502/503/504 最多重试一次；401/403、异常 JSON 不重试。取消的订阅不影响仍在使用同一请求的其他订阅；所有订阅取消后中断底层请求。会话缓存最多 8 项、10 分钟。错误提示不含 URL、Token 或原始响应。
+弹幕规范化为 `{id,time,text,color,mode}`：time 为秒，mode 为 scroll/top/bottom。`p` 的模式 1/4/5 对应滚动/底部/顶部，颜色为十进制 RGB。丢弃无效时间、空内容、过长内容及不支持模式，按时间排序；单次最多解析 150,000 条。
 
-## 自动匹配与身份
+请求超时 45 秒；网络失败和 502/503/504 重试一次。401/403、JSON/格式错误不反复重试。相同在途请求共享结果；取消一个消费者不影响其他消费者，最后一个退出后中断底层请求。缓存 10 分钟、最多 8 项、总原始评论不超过 100,000 条。语义失败不进入成功缓存；主动重新匹配会清缓存。
 
-优先调用 danmu_api 匹配机制；客户端校验作品名称、明确年份、明确季数和精确集号。第 1 集和第 10 集区分；特别篇和合并集要求手动选择。多个可靠候选不默认选第一项。
+## 匹配
 
-影视/季集身份独立于播放源身份。手动匹配按影视和季集保存，时间偏移按播放源分别保存，避免换源后的时间轴错用。
+优先使用 VPS 的 fileName 匹配机制，附加真实年份与 SxxExx。优先读取 `episodes_titles`，避免把数组第一项误当第 1 集。名称、明确年份、季数与集号不匹配时拒绝自动选择；多个可信结果、特别篇或合并集要求手动选择。已知时长相差超过 20% 时要求人工确认。
 
-## 时间轴与密度
+数字片名如《1917》不会被误当发行年份。支持中文数字集号；第 1 集、第 10 集及不同季数分开识别。没有可靠信息时不会静默挑选第一项。
 
-使用原生视频时间，毫秒转为秒。时间偏移正值延后弹幕。快进/倒退重置游标并二分查找当前位置，已过去的弹幕不重新补播；切集/换源取消旧请求并清空活动池。
+手动选择经过“作品/来源 → 真实集名 → 确认加载”，保存到当前影视/年份/季/集。已知集号的“第2集”和“第二集”共享影视身份；特别篇保留独立标签。播放源身份另存，用于不同时间轴的偏移。服务重启后按原标题、来源与集名重新解析 ID。主动重新自动匹配会移除当前手动映射，不清除其他影片。
 
-每秒上限提供 1、2、4 和不限制。每个视频时间秒内均匀抽样，避免只保留最早几条。同屏数量是独立硬限制。默认 2 条/秒、4 条同屏、上方 50%、75% 不透明度、8 秒滚动、26 DIP 字号、10 秒重复过滤窗口。
+## 时间同步与性能
 
-实际 Android TV 覆盖层与完整设置仍按阶段验证；最终结果见 `ANDROID_TV_TEST.md`，构建通过不代表当贝 D5X 真机通过。
-# 开发架构与安全边界
+时钟来自真实 Expo AV `positionMillis / 1000`、`isPlaying/isBuffering/rate`，不以墙钟推动弹幕。暂停/缓冲停止动画，恢复重新定位。快进/快退清理活动池并二分定位目标，不补发历史弹幕。切集、换源、退出取消旧请求；过期结果不能覆盖当前视频。
 
-基础版本：OrionTV 1.3.14，官方提交 `41c7a6005985e5543b9bf302cdd4233d82f1ead5`。开发分支 `feature/android-tv-danmaku`，保留 upstream。沿用 Expo 51、React Native TV 0.74 和 Expo AV 14，不升级播放器内核。
+Android AV 的状态 `uri` 只包含路径，因此用源加载生命周期确认当前视频，不直接比较完整 URL。不同 URL 的 Video 独立挂载，过期加载完成不更新新视频。播放意图先于异步暂停/恢复和倍速调用更新，丢弃与当前播放意图矛盾的旧状态回调。
 
-## 模块
+密度按视频秒公平选取每个窗口的分位样本，支持 1/2/4 条及不限。偏移后的窗口和延迟到达的状态也受每秒硬上限约束。同屏上限独立生效；“不限”不会取消同屏上限。相同文本在 10 视频秒内过滤。独占轨道避免追尾与严重重叠，活动组件数量有上限，不逐帧遍历全部历史。轨道不足时丢弃，不排队积累。
 
-`services/danmaku/api.ts` 负责独立 HTTP 客户端与数据解析；`matching.ts` 负责保守的季集识别；`media.ts` 将后端元数据映射为影视身份；`timeline.ts` 预计算密度、二分定位与有限轨道调度；`storage.ts` 保存连接、显示配置与手动映射；`stores/danmakuStore.ts` 管理异步加载和取消；`components/danmaku/DanmakuOverlay.tsx` 通过原生驱动的 Animated.Text 绘制有限活动池。
+默认：自动加载/显示开启、26 DIP 字号、8 视频秒滚动、75% 不透明度、上方 50% 区域、4 条同屏、2 条/视频秒、0 秒偏移、去重开启。固定底部位于所选显示区域下缘；需要屏幕底部时设为 100% 区域。
 
-当前完整 UI 与原播放器集成必须等待阶段 A/B 原生验证通过。此文档中的架构与模块测试不等于全部用户功能已交付。
+## 操作与存储
 
-## API
+- 全局设置：连接地址、普通 Token、测试连接、自动加载及所有显示默认值。
+- 原控制栏新增开关、密度快捷键和弹幕设置。
+- 播放器面板：重新匹配、手动来源/剧集、字号、透明度、颜色、速度、区域、数量、类型、去重和当前源偏移。
+- 正偏移延后、负偏移提前；每部影视每集每源单独保存，叠加全局偏移。
+- 恢复默认显示保留连接与手动映射；面板退出恢复控制栏入口焦点。面板打开时不自动隐藏控制栏，也不执行背后的长按快进。
 
-支持服务器根地址、带普通 TOKEN 的根地址和完整 `/api/v2` 根地址。Token 单独填写时避免重复拼接。查询 Token 使用路径鉴权，不使用 ADMIN_TOKEN，不携带 MoonTVPlus 的 Cookie。
+服务器地址与 Token 一同使用 SecureStore，完整 URL 中的 Token 也不会落入普通设置。显示参数与最多 200 项映射/偏移使用 `orion_danmaku_*_v1` 命名空间。设置写入串行合并，未变化的连接不重复加密。API 故障只显示安全错误，不退出账号、不切换视频。
 
-- POST `/match`：JSON `{fileName}`；验证 `isMatched` 与 `matches`。
-- GET `/search/anime?keyword=...`：返回作品列表及来源。
-- GET `/search/episodes?anime=...`：接口能力另行提供。
-- GET `/bangumi/:id`：选择作品后的集列表。
-- GET `/comment/:id?format=json&duration=true`：读取弹幕与视频时长。
+## 安全与限制
 
-规范化评论为 `{id, time, text, color, mode}`；time 使用秒，mode 为 scroll/top/bottom。`p` 字段的 1/4/5 模式分别对应滚动、底部、顶部。过滤异常时间、空文本、超过 300 字的文本和不支持模式。单响应最多解析 150,000 条。
+APK/Git/测试日志不包含真实查询 Token，不调用管理接口。Token 输入使用掩码，生产日志不输出 URL、Cookie、Authorization 或原始错误响应。直接客户端仍必须持有查询凭据；root、调试或抓包不能达到服务端密钥级保密。正式服务建议 HTTPS。
 
-每次请求 45 秒超时；网络失败或 502/503/504 重试一次。401/403、格式错误和异常 JSON 不反复重试。同请求共享在途结果，各消费者独立取消；所有消费者退出后取消底层请求。会话缓存 10 分钟、最多 8 项、总原始评论不超过 100,000 条。API 故障只影响弹幕状态，不触发退出登录或视频换源。
+本开发不修改正式 MoonTVPlus、Cloudflare/D1 或 VPS 配置。云端测试使用自制视频与模拟 API，不使用真实账号或 Token。独立包不自动安装官方原版更新，避免覆盖弹幕分支。
 
-## 匹配与身份
-
-优先使用 danmu_api 的 fileName 匹配，附加实际年份与 SxxExx。读取真实集标题，不能简单把数组第 1 项当作第 1 集；特别篇与合并集不能虚构普通集号。名称/年份/季数/集数不一致或多个可信结果时要求手动选择。已知视频与弹幕时长差异超过 20% 时要求手动确认。
-
-手动映射按影视名称、年份、电影/剧集、季集身份保存；播放源另作身份，用于保存源特有的时间偏移。服务端 ID 重启后可能变动，复播时按原作品来源和集标题重新解析，不能盲目复用旧 ID。切集、换源、退出时取消旧请求，过期结果不更新新视频。
-
-## 时间与密度
-
-实际 Expo AV `positionMillis / 1000` 是时钟来源；isPlaying/isBuffering/rate 来自原生状态。正偏移延迟弹幕，负偏移提前。暂停、缓冲停止动画；恢复按当前视频时间重新定位。跳转时清空活动池并二分定位新时间，不补发过去的评论。
-
-每个视频秒内按等距分位抽样，支持 1/2/4 条与不限；不限仍受独立同屏上限控制。重复文本在 10 秒视频窗口内过滤。独占轨道防止追尾，活动池最多为配置上限，不逐帧扫描全部历史。字号 26 DIP、滚动持续 8 视频秒、透明度 75%、顶部 50% 区域、同屏 4 条、2 条/秒为默认值。
-
-## 存储与限制
-
-服务器地址和普通 Token 一同保存在 Android SecureStore，防止含 Token 的完整 URL 落入普通配置。显示设置和最多 200 项映射/偏移使用独立 AsyncStorage 命名空间，不修改原有观看记录。APK 不含真实 Token，日志只使用固定错误代码与无敏感信息的提示。
-
-直接客户端必须持有查询 Token；设备被 root、调试或抓包时无法达到服务端密钥的保密级别。安全存储不改变这一边界。不要填入管理 Token。自定义 HTTP 地址为兼容私有服务提供，但正式部署建议使用 HTTPS。
-
-模拟器测试不能证明当贝 D5X 的硬件解码性能。旧 Android 的媒体解码器、系统字体和遥控器实现仍需真机验收。官方自动更新与独立测试签名须隔离处理，避免官方 APK 覆盖此分支功能。
+自动化与当贝 D5X 的实际硬件能力分开报告。云端软件解码/可访问性读取有明显延迟，不能作为 D5X 帧率结论。最终状态与未验证项见 [ANDROID_TV_TEST.md](ANDROID_TV_TEST.md)。

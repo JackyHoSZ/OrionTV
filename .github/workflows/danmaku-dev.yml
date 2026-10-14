@@ -3,6 +3,11 @@ on:
   push:
     branches: [feature/android-tv-danmaku]
   workflow_dispatch:
+    inputs:
+      build_apk:
+        description: Build signed ARM delivery after successful runtime tests
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -88,12 +93,10 @@ jobs:
   overlay-retest:
     if: ${{ contains(github.event.head_commit.message, '[overlay-retest]') }}
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     env:
       EXPO_TV: '1'
       EXPO_PUBLIC_DANMAKU_E2E: '1'
-      ORION_SIGNING_P12: ${{ secrets.ORION_SIGNING_P12 }}
-      ORION_SIGNING_PASSWORD: ${{ secrets.ORION_SIGNING_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -124,6 +127,9 @@ jobs:
           yarn jest --ci --runInBand
           node scripts/danmaku-benchmark.cjs
       - run: python3 scripts/rebundle-probe.py
+        env:
+          ORION_SIGNING_P12: ${{ secrets.ORION_SIGNING_P12 }}
+          ORION_SIGNING_PASSWORD: ${{ secrets.ORION_SIGNING_PASSWORD }}
       - run: bash scripts/android-inspector/build.sh
       - name: Enable KVM
         run: |
@@ -144,3 +150,54 @@ jobs:
         with:
           name: Android-TV-overlay-retest-${{ github.run_number }}
           path: test-results/emulator/
+
+  signed-arm-delivery:
+    needs: [native-feasibility, overlay-retest]
+    if: >-
+      ${{ always() && (contains(github.event.head_commit.message, '[delivery]') || inputs.build_apk == true) &&
+          (needs.native-feasibility.result == 'success' || needs.overlay-retest.result == 'success') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      EXPO_TV: '1'
+      EXPO_PUBLIC_DANMAKU_E2E: '0'
+      NODE_ENV: production
+      ORION_BUILD_NUMBER: ${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: yarn
+      - run: yarn install --frozen-lockfile --production=false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
+      - name: Stamp build time
+        run: |
+          python3 - <<'PY'
+          import os,datetime
+          with open(os.environ['GITHUB_ENV'],'a') as f:
+            f.write('ORION_BUILD_TIME='+datetime.datetime.now(datetime.timezone.utc).isoformat()+'\n')
+          PY
+      - name: Build ARM32 and ARM64 using official native engine
+        run: |
+          yarn expo prebuild --clean --platform android --no-install
+          yarn copy-config
+          python3 scripts/prepare-tv-native.py
+          cd android
+          ./gradlew assembleRelease -PreactNativeArchitectures=armeabi-v7a,arm64-v8a '-Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1024m' --max-workers=2 --console=plain
+      - name: Sign and verify personal APK
+        run: python3 scripts/sign-user-apk.py
+        env:
+          ORION_SIGNING_P12: ${{ secrets.ORION_SIGNING_P12 }}
+          ORION_SIGNING_PASSWORD: ${{ secrets.ORION_SIGNING_PASSWORD }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OrionTV-Danmaku-ARM-${{ github.run_number }}
+          path: delivery/
+          retention-days: 90
