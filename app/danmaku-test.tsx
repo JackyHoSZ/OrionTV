@@ -28,12 +28,14 @@ export default function DanmakuTestScreen() {
         onPress={async () => {
           setCommands(n=>n+1);
           try {
-            const current=await ref.current?.getStatusAsync();
+            setRpc('GET_STATUS');
+            const current=await Promise.race([ref.current?.getStatusAsync(),new Promise<never>((_,reject)=>setTimeout(()=>reject(new Error('GET_STATUS_TIMEOUT')),5000))]);
+            setRpc(current?.isLoaded?'SET_STATE':'UNLOADED');
             if(current?.isLoaded){
               const next=current.shouldPlay?await ref.current?.pauseAsync():await ref.current?.playAsync();
               if(next?.isLoaded){setShouldPlay(next.shouldPlay);setRpc(`before=${current.shouldPlay}/${current.isPlaying};after=${next.shouldPlay}/${next.isPlaying}`);}
             }
-          } catch { setRpc('AV_ERROR'); }
+          } catch (error) { setRpc(error instanceof Error?error.message.replace(/https?:\/\/\S+/g,'URL').slice(0,120):'AV_ERROR'); }
         }} />
       <StyledButton text="快进 10 秒" accessibilityLabel="probe-seek"
         onPress={() => loaded && ref.current?.setPositionAsync(status.positionMillis + 10000)} />
