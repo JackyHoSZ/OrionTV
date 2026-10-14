@@ -187,6 +187,7 @@ jobs:
       EXPO_TV: '1'
       EXPO_PUBLIC_DANMAKU_E2E: '0'
       NODE_ENV: production
+      ORION_ARM_ONLY: '1'
       ORION_BUILD_NUMBER: ${{ github.run_number }}
     steps:
       - uses: actions/checkout@v4
