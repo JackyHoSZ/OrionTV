@@ -1,5 +1,5 @@
 """Real TV AVD validation against credential-free API fixtures and original AV controls."""
-import json,pathlib,re,subprocess,time,urllib.request,xml.etree.ElementTree as ET
+import os,json,pathlib,re,subprocess,time,urllib.request,xml.etree.ElementTree as ET
 OUT=pathlib.Path('test-results/emulator');OUT.mkdir(parents=True,exist_ok=True)
 for old in OUT.iterdir():
  if old.is_file():old.unlink()
@@ -81,7 +81,8 @@ try:
  press('player-pause');resumed=wait_state('06-resumed',lambda s:s['playing'])
  press('probe-rate');rate=wait_state('07-rate',lambda s:s['rate']==2)
  press('danmaku-toggle');off=wait_state('08-off',lambda s:s['playing'] and not s['enabled'] and s['active']==0 and not s['saving'])
- press('danmaku-toggle');press('danmaku-density');density=wait_state('09-density',lambda s:s['density']==4 and s['active']<=4)
+ press('danmaku-toggle');wait_state('08a-on',lambda s:s['enabled'] and not s['saving'])
+ press('danmaku-density');density=wait_state('09-density',lambda s:s['density']==4 and s['active']<=4)
  press('probe-next');time.sleep(4);episode=wait_state('10-next-episode',lambda s:s['episode']==3 and s['match']==3 and s['playing']);assert episode['position']<40000,episode
  press('probe-normal');wait_state('11-normal-rate',lambda s:s['rate']==1)
  press('danmaku-settings');wait_panel('12-settings-panel','播放弹幕设置')
@@ -107,7 +108,26 @@ try:
  type_text('danmaku-color-input','#ff6600');press('danmaku-color-save')
  wait_panel_setting('22-custom-color','danmaku-original-color','关（使用自选颜色）')
  press('danmaku-close');wait_state('23-custom-color-live',lambda s:s['color']=='ff6600' and not s['saving'])
- (OUT/'result.json').write_text(json.dumps({'passed':True,'stage':'C','nativeVideo':True,'nativeAPI':True,'comments':10000,'pause':True,'resume':True,'seek':True,'rewind':True,'rate2':True,'density':True,'toggle':True,'episode':True,'panel':True,'manualMatch':True,'persistentSettings':True,'perSourceOffset':True,'focusReturn':True,'manualMappingReusedWithoutAutoMatch':True,'globalConnectionTest':True,'customColor':True,'hardware':'cloud Android TV API29 x86, not Dangbei D5X'},indent=2))
+ extended=os.environ.get('DANMAKU_STABILITY')=='1'
+ if extended:
+  press('probe-rate125');wait_state('24-rate125',lambda s:s['rate']==1.25)
+  press('probe-rate150');wait_state('25-rate150',lambda s:s['rate']==1.5)
+  press('probe-normal');wait_state('26-rate1',lambda s:s['rate']==1)
+  press('probe-source');source=wait_state('27-source',lambda s:s['loaded'] and s['playing'] and s['match']==3 and s['offset']==0 and not s['loading'])
+  def control(status):
+   request=urllib.request.Request('http://127.0.0.1:8765/_control',json.dumps({'commentStatus':status}).encode(),{'Content-Type':'application/json'})
+   assert json.load(urllib.request.urlopen(request))['fixture']
+  control(503)
+  press('danmaku-settings');press('danmaku-rematch');press('danmaku-close')
+  error=wait_state('28-api-failure',lambda s:s['playing'] and not s['loading'] and s['comments']==0 and '503' in s['message'])
+  time.sleep(2);continued=wait_state('29-video-continues',lambda s:s['playing'] and s['position']>error['position']+1000)
+  control(200)
+  press('danmaku-settings');press('danmaku-rematch');press('danmaku-close')
+  wait_state('30-api-recovered',lambda s:s['playing'] and s['match']==3 and s['comments']==10000)
+  press('probe-next');wait_state('31-episode2',lambda s:s['loaded'] and s['episode']==2 and s['match']==2 and s['playing'])
+  press('probe-end');wait_state('32-auto-next',lambda s:s['loaded'] and s['episode']==3 and s['match']==3 and s['playing'] and s['position']<40000,timeout=90)
+  press('probe-movie');wait_state('33-movie',lambda s:s['loaded'] and s['match']==4 and s['playing'] and s['comments']==10000)
+ (OUT/'result.json').write_text(json.dumps({'passed':True,'stage':'D' if extended else 'C','rate125And150':extended,'sourceChange':extended,'apiFailureDoesNotBlockVideo':extended,'automaticNextEpisode':extended,'nativeMovieMatch':extended,'nativeVideo':True,'nativeAPI':True,'comments':10000,'pause':True,'resume':True,'seek':True,'rewind':True,'rate2':True,'density':True,'toggle':True,'episode':True,'panel':True,'manualMatch':True,'persistentSettings':True,'perSourceOffset':True,'focusReturn':True,'manualMappingReusedWithoutAutoMatch':True,'globalConnectionTest':True,'customColor':True,'hardware':'cloud Android TV API29 x86, not Dangbei D5X'},indent=2))
 finally:
  (OUT/'failure-or-final.png').write_bytes(adb('exec-out','screencap','-p'));(OUT/'logcat.txt').write_bytes(adb('logcat','-d'))
  try:
@@ -117,5 +137,6 @@ finally:
    adb('shell','kill','-3',pid);time.sleep(2)
    (OUT/'java-threads.txt').write_bytes(adb('shell','cat','/data/anr/*'))
  except Exception:pass
+ (OUT/'gfxinfo.txt').write_bytes(adb('shell','dumpsys','gfxinfo','com.oriontv.danmaku.dev','framestats'))
  (OUT/'meminfo.txt').write_bytes(adb('shell','dumpsys','meminfo','com.oriontv.danmaku.dev'))
  server.terminate()

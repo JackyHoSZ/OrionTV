@@ -3,6 +3,7 @@ from http.server import ThreadingHTTPServer,BaseHTTPRequestHandler
 from pathlib import Path
 import json,re,urllib.parse,time
 video=Path('assets/danmaku-test.mp4')
+state={'commentStatus':200}
 class Handler(BaseHTTPRequestHandler):
  def log_message(self,*args): pass
  def reply(self,data,status=200):
@@ -11,7 +12,10 @@ class Handler(BaseHTTPRequestHandler):
   body=json.dumps(data,ensure_ascii=False).encode();self.send_response(status);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(body)));self.end_headers();self.wfile.write(body)
  def do_POST(self):
   body=json.loads(self.rfile.read(int(self.headers.get('Content-Length','0'))) or b'{}')
+  if self.path=='/_control':
+   state['commentStatus']=int(body.get('commentStatus',200));return self.reply({'fixture':True})
   if self.path=='/api/v2/match':
+   if '模拟电影' in body.get('fileName',''):return self.reply({'success':True,'isMatched':True,'matches':[{'animeId':2,'episodeId':4,'animeTitle':'模拟电影(2024) from fixture','episodeTitle':'正片'}]})
    match=re.search(r'E(\d+)',body.get('fileName',''));number=int(match[1]) if match else 2
    return self.reply({'success':True,'isMatched':True,'matches':[{'animeId':1,'episodeId':number,'animeTitle':'模拟剧第二季(2024) from fixture','episodeTitle':f'第{number}集'}]})
   self.reply({},404)
@@ -37,6 +41,7 @@ class Handler(BaseHTTPRequestHandler):
    except (BrokenPipeError,ConnectionResetError):pass
    return
   if path.startswith('/api/v2/comment/'):
+   if state['commentStatus']!=200:return self.reply({'success':False},state['commentStatus'])
    n=int(path.rsplit('/',1)[1]);return self.reply({'success':True,'videoDuration':600,'comments':[{'cid':i,'p':f'{i/30},1,16777215,fixture','m':f'第{n}集 模拟弹幕 {i}'} for i in range(10000)]})
   if path=='/api/v2/search/anime':return self.reply({'success':True,'animes':[{'animeId':1,'animeTitle':'模拟剧第二季(2024) from fixture','source':'fixture'}]})
   if path=='/api/v2/bangumi/1':return self.reply({'success':True,'bangumi':{'episodes':[{'episodeId':n,'episodeTitle':f'第{n}集'} for n in [2,3]]}})

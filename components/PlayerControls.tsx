@@ -1,3 +1,4 @@
+import {focusTV} from '@/utils/tvFocus';
 import React,{useRef,useEffect} from "react";
 import { View, Text, StyleSheet, Pressable } from "react-native";
 import { Pause, Play, SkipForward, List, Tv, ArrowDownToDot, ArrowUpFromDot, Gauge } from "lucide-react-native";
@@ -43,7 +44,7 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({ showControls, se
   const panelContext=useDanmakuStore(s=>s.panelContext);
   const panelButton=useRef<View>(null);const wasOpen=useRef(false);
   useEffect(()=>{const restore=wasOpen.current&&!panelOpen&&panelContext==='player';wasOpen.current=panelOpen;
-   if(restore){const timer=setTimeout(()=>panelButton.current?.focus(),180);return()=>clearTimeout(timer);}
+   if(restore){const timer=setTimeout(()=>focusTV(panelButton.current),180);return()=>clearTimeout(timer);}
   },[panelOpen,panelContext]);
 
   const videoTitle = detail?.title || "";

@@ -4,7 +4,7 @@ module.exports = function (api) {
   const plugins = [];
   
   // 在生产环境移除console调用以优化性能
-  if (process.env.NODE_ENV === 'production') {
+  if (process.env.NODE_ENV === 'production' && process.env.EXPO_PUBLIC_DANMAKU_E2E !== '1') {
     plugins.push('transform-remove-console');
   }
   

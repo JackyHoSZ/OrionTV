@@ -13,3 +13,9 @@ for activity in app.findall('activity'):
             if data.get('{'+ns+'}scheme')=='oriontv': data.set('{'+ns+'}scheme','oriontv-danmaku')
             if data.get('{'+ns+'}scheme')=='com.oriontv': data.set('{'+ns+'}scheme','com.oriontv.danmaku.dev')
 tree.write(p,encoding='utf-8',xml_declaration=True)
+
+# Keep local settings IO independent from the process-wide Android AsyncTask pool.
+properties=pathlib.Path('android/gradle.properties')
+value=properties.read_text()
+if 'AsyncStorage_dedicatedExecutor=' not in value:value+='\nAsyncStorage_dedicatedExecutor=true\n'
+properties.write_text(value)

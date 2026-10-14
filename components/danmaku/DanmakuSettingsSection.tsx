@@ -1,3 +1,4 @@
+import {focusTV} from '@/utils/tvFocus';
 import React,{useEffect,useRef} from 'react';
 import {View,Text,StyleSheet} from 'react-native';
 import Constants from 'expo-constants';
@@ -6,7 +7,7 @@ import {useDanmakuStore} from '@/stores/danmakuStore';
 import {DanmakuPanel} from './DanmakuPanel';
 export function DanmakuSettingsSection(){
  const button=useRef<View>(null);const open=useDanmakuStore(s=>s.panelOpen&&s.panelContext==='global');const previous=useRef(false);
- useEffect(()=>{const restore=previous.current&&!open;previous.current=open;if(restore){const timer=setTimeout(()=>button.current?.focus(),180);return()=>clearTimeout(timer);}},[open]);
+ useEffect(()=>{const restore=previous.current&&!open;previous.current=open;if(restore){const timer=setTimeout(()=>focusTV(button.current),180);return()=>clearTimeout(timer);}},[open]);
  return <View style={styles.box}>
   <StyledButton ref={button} text="弹幕设置" accessibilityLabel="danmaku-global-settings" onPress={()=>useDanmakuStore.getState().setPanelOpen(true,'global')}/>
   <Text style={styles.text}>独立弹幕版 · {Constants.expoConfig?.version} · 构建 {Constants.expoConfig?.extra?.danmakuBuild||'local'}</Text>
