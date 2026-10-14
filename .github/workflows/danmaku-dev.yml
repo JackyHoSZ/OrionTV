@@ -36,6 +36,7 @@ jobs:
         run: |
           yarn expo prebuild --clean --platform android --no-install
           yarn copy-config
+          python3 scripts/prepare-tv-native.py
       - name: Build self-contained native test APK
         run: |
           cd android
