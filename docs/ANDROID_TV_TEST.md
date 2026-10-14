@@ -35,12 +35,24 @@ gh workflow run danmaku-dev.yml --repo JackyHoSZ/OrionTV --ref feature/android-t
 | A | [运行 38626200453](https://github.com/JackyHoSZ/OrionTV/actions/runs/38626200453) 成功：真实视频、三条覆盖、遥控器暂停/恢复/快进；暂停两次位置均 39103ms，覆盖坐标相同 |
 | B | [运行 38638735218](https://github.com/JackyHoSZ/OrionTV/actions/runs/38638735218) 成功：原控制栏、原生 API 10000 条、暂停稳定、暂停时 ±10 秒、2 倍速、开关/保存、密度和切集；下一集实际 match=3、同屏≤4 |
 | C | [运行 38646815556](https://github.com/JackyHoSZ/OrionTV/actions/runs/38646815556) 成功：完整面板、手动选集、单集/源偏移、焦点恢复、重启后复用映射、连接测试与自定义颜色 |
-| D | [运行 38647907529](https://github.com/JackyHoSZ/OrionTV/actions/runs/38647907529) 的原生运行任务成功：122 项测试、四方向/Back/焦点恢复、1.25/1.5/2 倍速、换源独立偏移、HTTP503 下继续播放及恢复、自动下一集、电影自动匹配和真实 HLS 播放；100/1000/3000/10000 基准同屏始终≤4 |
-| E | 签名交付构建由测试门槛控制；最终 Artifact 与大小待生成后补充 |
+| D | [运行 38647907529](https://github.com/JackyHoSZ/OrionTV/actions/runs/38647907529) 和 [最终运行 38650229312](https://github.com/JackyHoSZ/OrionTV/actions/runs/38650229312) 的原生运行任务均成功：122 项测试、四方向/Back/焦点恢复、1.25/1.5/2 倍速、换源独立偏移、HTTP503 下继续播放及恢复、自动下一集、电影自动匹配和真实 HLS 播放；100/1000/3000/10000 基准同屏始终≤4 |
+| E | [运行 38650229312](https://github.com/JackyHoSZ/OrionTV/actions/runs/38650229312) 全部成功。固定个人签名、versionCode 35、ARM32+ARM64、Android 6+（minSdk23）、非 debuggable；[下载 Artifact](https://github.com/JackyHoSZ/OrionTV/actions/runs/38650229312/artifacts/11935675133)。APK 为 37,655,992 字节（37.66 MB / 35.91 MiB），本地 SHA-256 与云端一致 |
 
 真实 VPS 只读验证：庆余年第二季第 2 集匹配成功，读取 40,058 条评论、2730 秒；电影“流浪地球(2019)”匹配成功。手动搜索返回四个来源，360 与腾讯作品列表均读取 36 个实际剧集。没有把真实查询 Token 上传到 CI。
 
 真实 MoonTVPlus 只读验证：登录、server-config 与播放源接口 200，StorageType=d1，69 个源；“三体”单源查询返回实际集标题。没有改动源配置、管理员、数据库或正式观看记录。影视源某个片名无结果不能等同接口不兼容。
+
+## 当前交付
+
+- 文件：`OrionTV-Danmaku-dev-1.3.14-danmaku.1-b35-arm.apk`。
+- 应用：OrionTV Danmaku Dev；包名 `com.oriontv.danmaku.dev`。
+- 版本：`1.3.14-danmaku.1`，versionCode `35`。
+- 签名完成时间：2026-10-15 07:06:49（北京时间）。
+- SHA-256：`58af8bf76afffd956f0d63cd80617570e0e909866e5f41336a8eda3b75a9d44e`。
+- [直接下载本次 Artifact](https://github.com/JackyHoSZ/OrionTV/actions/runs/38650229312/artifacts/11935675133)，登录 GitHub 后下载 ZIP 并解压；产物保留 90 天。
+- v1/v2/v3 签名验证通过；两种 ARM 架构各 48 个原生库，必要库齐全；具备电视 Launcher 入口。
+- 交付包未启用测试入口，不包含真实 VPS Token 或 CI 原生诊断代码；本地下载文件已校验。
+- minSdk23 表示最低安装要求为 Android 6，不代表已在 Android 6 真机或当贝 D5X 上运行验证。
 
 ## 模拟器的实际限制
 
