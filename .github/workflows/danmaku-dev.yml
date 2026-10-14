@@ -1,0 +1,65 @@
+name: Android TV Danmaku Development
+on:
+  push:
+    branches: [feature/android-tv-danmaku]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: danmaku-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  native-feasibility:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      EXPO_TV: '1'
+      EXPO_PUBLIC_DANMAKU_E2E: '1'
+      ORION_BUILD_NUMBER: ${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: '17'
+      - name: Generate authorized synthetic video
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg
+          ffmpeg -y -f lavfi -i testsrc2=size=1280x720:rate=25 -f lavfi -i sine=frequency=440 -t 60 -c:v libx264 -preset ultrafast -pix_fmt yuv420p -c:a aac -shortest assets/danmaku-test.mp4
+      - name: Generate TV native project (official Expo pipeline)
+        run: yarn prebuild --platform android
+      - name: Build self-contained native test APK
+        run: |
+          cd android
+          ./gradlew assembleRelease -PreactNativeArchitectures=x86 --console=plain
+          cd ..
+          mkdir -p artifacts
+          cp android/app/build/outputs/apk/release/app-release.apk artifacts/OrionTV-Danmaku-e2e.apk
+      - name: Enable KVM for Android TV
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Run real Android TV video and remote smoke test
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          target: android-tv
+          arch: x86
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: python3 scripts/android-tv-smoke.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Android-TV-feasibility-${{ github.run_number }}
+          path: |
+            artifacts/
+            test-results/
+          retention-days: 30
