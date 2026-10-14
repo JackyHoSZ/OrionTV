@@ -56,6 +56,7 @@ jobs:
         with:
           api-level: 29
           target: android-tv
+          profile: tv_1080p
           arch: x86
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
@@ -94,6 +95,7 @@ jobs:
         with:
           api-level: 29
           target: android-tv
+          profile: tv_1080p
           arch: x86
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true

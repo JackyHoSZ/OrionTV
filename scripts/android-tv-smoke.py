@@ -9,8 +9,12 @@ def adb(*args):
 
 def snapshot(name):
     (OUT / (name + '.png')).write_bytes(adb('exec-out', 'screencap', '-p'))
-    adb('shell', 'am', 'instrument', '-w', '-e', 'output', '/sdcard/window.xml', 'com.oriontv.danmaku.inspect/.Inspector')
-    data = adb('shell', 'cat', '/sdcard/window.xml')
+    result = adb('shell', 'am', 'instrument', '-w', 'com.oriontv.danmaku.inspect/.Inspector')
+    (OUT / (name + '-inspection.txt')).write_bytes(result)
+    assert b'INSTRUMENTATION_CODE: -1' in result, 'Accessibility inspection failed: ' + result.decode()[:400]
+    match = re.search(rb'INSTRUMENTATION_RESULT: xml=(.*?)\nINSTRUMENTATION_CODE:', result, re.S)
+    assert match, 'Inspector did not return an XML hierarchy'
+    data = match[1]
     (OUT / (name + '.xml')).write_bytes(data)
     nodes = ET.fromstring(data).iter('node')
     text = ' '.join(n.get('content-desc', '') + ' ' + n.get('text', '') for n in nodes)

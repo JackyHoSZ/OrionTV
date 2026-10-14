@@ -10,3 +10,5 @@ javac -source 8 -target 8 -classpath "$PLATFORM" -d test-results/inspector/class
 (cd test-results/inspector/dex && zip -q ../unsigned.apk classes.dex)
 keytool -genkeypair -keystore test-results/inspector/ci.p12 -storetype PKCS12 -storepass testonly-ci -keypass testonly-ci -alias inspector -dname 'CN=CI Test Inspector' -keyalg RSA -validity 2 -noprompt
 "$BUILD_TOOLS/apksigner" sign --ks test-results/inspector/ci.p12 --ks-pass pass:testonly-ci --out test-results/inspector/inspector.apk test-results/inspector/unsigned.apk
+
+rm test-results/inspector/ci.p12
