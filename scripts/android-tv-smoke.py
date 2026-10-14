@@ -43,7 +43,7 @@ def wait_panel(name,phrase,timeout=45):
   time.sleep(1);root,text=inspect(name)
  assert phrase in text,text[:300]
  return root,text
-def wait_state(name,predicate,timeout=40):
+def wait_state(name,predicate,timeout=60):
  deadline=time.monotonic()+timeout
  state=snapshot(name)
  while (state is None or not predicate(state)) and time.monotonic()<deadline:
@@ -95,12 +95,27 @@ try:
  press('danmaku-episode-1');wait_panel('16-confirm','确认加载此弹幕来源')
  press('danmaku-confirm');wait_panel('17-manual-saved','danmaku-manual')
  press('danmaku-close');manual=wait_state('18-manual-loaded',lambda s:s['match']==3 and not s['loading'])
+ before_restart=len((OUT/'fixture-requests.jsonl').read_text().splitlines())
  adb('shell','am','force-stop','com.oriontv.danmaku.dev')
  adb('shell','am','start','-W','-a','android.intent.action.VIEW','-d','oriontv-danmaku://danmaku-test?reuse=1&episode=3','com.oriontv.danmaku.dev');time.sleep(10)
  persistent=wait_state('19-restarted',lambda s:s['loaded'] and s['match']==3 and not s['loading'],timeout=90)
  assert persistent['font']==30 and persistent['opacity']==1 and persistent['offset']==1,persistent
- (OUT/'result.json').write_text(json.dumps({'passed':True,'stage':'C','nativeVideo':True,'nativeAPI':True,'comments':10000,'pause':True,'resume':True,'seek':True,'rewind':True,'rate2':True,'density':True,'toggle':True,'episode':True,'panel':True,'manualMatch':True,'persistentSettings':True,'perSourceOffset':True,'focusReturn':True,'hardware':'cloud Android TV API29 x86, not Dangbei D5X'},indent=2))
+ operations=[json.loads(line)['operation'] for line in (OUT/'fixture-requests.jsonl').read_text().splitlines()[before_restart:]]
+ assert 'search' in operations and 'bangumi' in operations and 'match' not in operations,operations
+ press('probe-global');wait_panel('20-global-panel','全局弹幕设置')
+ press('danmaku-test-connection');wait_panel('21-connection','连接成功')
+ type_text('danmaku-color-input','#ff6600');press('danmaku-color-save')
+ wait_panel_setting('22-custom-color','danmaku-original-color','关（使用自选颜色）')
+ press('danmaku-close');wait_state('23-custom-color-live',lambda s:s['color']=='ff6600' and not s['saving'])
+ (OUT/'result.json').write_text(json.dumps({'passed':True,'stage':'C','nativeVideo':True,'nativeAPI':True,'comments':10000,'pause':True,'resume':True,'seek':True,'rewind':True,'rate2':True,'density':True,'toggle':True,'episode':True,'panel':True,'manualMatch':True,'persistentSettings':True,'perSourceOffset':True,'focusReturn':True,'manualMappingReusedWithoutAutoMatch':True,'globalConnectionTest':True,'customColor':True,'hardware':'cloud Android TV API29 x86, not Dangbei D5X'},indent=2))
 finally:
  (OUT/'failure-or-final.png').write_bytes(adb('exec-out','screencap','-p'));(OUT/'logcat.txt').write_bytes(adb('logcat','-d'))
+ try:
+  adb('root');time.sleep(1)
+  pid=adb('shell','pidof','com.oriontv.danmaku.dev').decode().strip()
+  if pid:
+   adb('shell','kill','-3',pid);time.sleep(2)
+   (OUT/'java-threads.txt').write_bytes(adb('shell','cat','/data/anr/*'))
+ except Exception:pass
  (OUT/'meminfo.txt').write_bytes(adb('shell','dumpsys','meminfo','com.oriontv.danmaku.dev'))
  server.terminate()

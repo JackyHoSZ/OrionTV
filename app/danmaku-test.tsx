@@ -44,12 +44,14 @@ export default function DanmakuTestScreen(){
   {ready&&<NativeVideo key={currentEpisode?.url} ref={ref} style={StyleSheet.absoluteFill} {...videoProps}/>}
   <PlayerDanmaku onActiveCount={setActive}/>
   <DanmakuPanel/>
+  <DanmakuPanel context="global"/>
   <PlayerControls showControls setShowControls={p.setShowControls}/>
   <Text style={styles.badge} accessibilityLabel={badge}>{badge}</Text>
   <Text style={styles.message} accessibilityLabel={'DANMAKU_STATUS '+d.message}>{d.message}</Text>
   <View style={styles.actions}>
    <StyledButton text="后退10秒" accessibilityLabel="probe-back" onPress={()=>p.seek(-10000)}/>
    <StyledButton text="前进10秒" accessibilityLabel="probe-forward" onPress={()=>p.seek(10000)}/>
+   <StyledButton text="全局设置" accessibilityLabel="probe-global" onPress={()=>d.setPanelOpen(true,'global')}/>
    <StyledButton text="正常速度" accessibilityLabel="probe-normal" onPress={()=>p.setPlaybackRate(1)}/>
    <StyledButton text="2倍速" accessibilityLabel="probe-rate" onPress={()=>p.setPlaybackRate(2)}/>
    <StyledButton text="下一集" accessibilityLabel="probe-next" onPress={()=>p.playEpisode(p.currentEpisodeIndex?0:1)}/>

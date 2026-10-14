@@ -8,6 +8,8 @@ const MAPPINGS='orion_danmaku_mappings_v1';
 const OFFSETS='orion_danmaku_offsets_v1';
 let writes: Promise<void>=Promise.resolve();
 let connectionSnapshot:string|null=null;
+// CI-only stage names: never log keys, connection values, or stored payloads.
+const trace=(stage:string)=>{if(process.env.EXPO_PUBLIC_DANMAKU_E2E==='1')console.info('[DanmakuStorage] '+stage);};
 function serial(task:()=>Promise<void>):Promise<void> {
  const own=writes.catch(()=>{}).then(task);writes=own;return own;
 }
@@ -43,9 +45,11 @@ export const DanmakuStorage={
  async saveSettings(settings:DanmakuSettings):Promise<void> {
   const {apiUrl,token,...display}=normalizeSettings(settings);
   const secret=JSON.stringify({apiUrl,token});
+  trace('settings queued');
   return serial(async()=>{
-   if(connectionSnapshot!==secret){await SecureStore.setItemAsync(CONNECTION,secret);connectionSnapshot=secret;}
-   await AsyncStorage.setItem(SETTINGS,JSON.stringify(display));
+   trace('settings started');
+   if(connectionSnapshot!==secret){trace('connection write');await SecureStore.setItemAsync(CONNECTION,secret);connectionSnapshot=secret;}
+   trace('display write');await AsyncStorage.setItem(SETTINGS,JSON.stringify(display));trace('settings saved');
   });
  },
  async getMatch(key:string):Promise<DanmakuMatch|null>{return (await readMap<DanmakuMatch>(MAPPINGS))[key]||null;},
