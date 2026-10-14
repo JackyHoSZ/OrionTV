@@ -1,6 +1,9 @@
 package com.oriontv.danmaku.inspect;
 import android.app.Instrumentation;
 import android.app.Activity;
+import android.app.UiAutomation;
+import android.os.SystemClock;
+import android.view.KeyEvent;
 import android.os.Bundle;
 import android.graphics.Rect;
 import android.view.accessibility.AccessibilityNodeInfo;
@@ -10,12 +13,23 @@ import org.xmlpull.v1.XmlSerializer;
 
 /** Separate test-only process. Never restarts or modifies the foreground application. */
 public class Inspector extends Instrumentation {
-  @Override public void onCreate(Bundle arguments) { super.onCreate(arguments);start(); }
+  private String keys;
+  @Override public void onCreate(Bundle arguments) { super.onCreate(arguments);keys=arguments.getString("keys");start(); }
   @Override public void onStart() {
     Bundle result=new Bundle();
     try {
-      AccessibilityNodeInfo root=getUiAutomation().getRootInActiveWindow();
-      for(int i=0;i<20 && root==null;i++){Thread.sleep(100);root=getUiAutomation().getRootInActiveWindow();}
+      UiAutomation automation=getUiAutomation(UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES);
+      if(keys!=null){
+        for(String value:keys.split(",")){
+          int key=Integer.parseInt(value);long t=SystemClock.uptimeMillis();
+          automation.injectInputEvent(new KeyEvent(t,t,KeyEvent.ACTION_DOWN,key,0),false);
+          automation.injectInputEvent(new KeyEvent(t,t+50,KeyEvent.ACTION_UP,key,0),false);
+          SystemClock.sleep(800);
+        }
+        result.putString("keys",keys);finish(Activity.RESULT_OK,result);return;
+      }
+      AccessibilityNodeInfo root=automation.getRootInActiveWindow();
+      for(int i=0;i<20 && root==null;i++){Thread.sleep(100);root=automation.getRootInActiveWindow();}
       if(root==null) throw new IllegalStateException("No accessibility root");
       StringWriter file=new StringWriter();
       XmlSerializer xml=Xml.newSerializer();xml.setOutput(file);xml.startDocument("UTF-8",true);

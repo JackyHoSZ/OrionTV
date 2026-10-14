@@ -7,6 +7,10 @@ OUT.mkdir(parents=True, exist_ok=True)
 def adb(*args):
     return subprocess.check_output(['adb', *args])
 
+def keys(*codes):
+    result = adb('shell', 'am', 'instrument', '-w', '-e', 'keys', ','.join(str(c) for c in codes), 'com.oriontv.danmaku.inspect/.Inspector')
+    assert b'INSTRUMENTATION_CODE: -1' in result, 'Remote injection failed'
+
 def snapshot(name):
     (OUT / (name + '-window.txt')).write_bytes(adb('shell', 'dumpsys', 'window', 'windows'))
     (OUT / (name + '.png')).write_bytes(adb('exec-out', 'screencap', '-p'))
@@ -32,22 +36,18 @@ try:
     playing = snapshot('01-playing')
     assert playing['loaded'] and playing['playing'] and playing['position'] > 1000, playing
     # Re-establish physical TV focus after the separate accessibility inspector disconnects.
-    adb('shell', 'input', 'keyevent', '22')
-    adb('shell', 'input', 'keyevent', '21')
-    time.sleep(1)
-    adb('shell', 'input', 'keyevent', '23')
+    keys(22,21,23)
     time.sleep(1)
     paused = snapshot('02-paused')
     assert not paused['playing'], paused
     time.sleep(2)
     stable = snapshot('03-paused-stable')
     assert abs(stable['position'] - paused['position']) < 200, (paused, stable)
-    adb('shell', 'input', 'keyevent', '23')
+    keys(22,21,23)
     time.sleep(2)
     resumed = snapshot('04-resumed')
     assert resumed['playing'] and resumed['position'] > stable['position'], resumed
-    adb('shell', 'input', 'keyevent', '22')
-    adb('shell', 'input', 'keyevent', '23')
+    keys(22,23)
     time.sleep(1)
     sought = snapshot('05-seek')
     assert sought['position'] >= resumed['position'] + 9000, sought

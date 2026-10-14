@@ -72,6 +72,11 @@ jobs:
             artifacts/
             test-results/
           retention-days: 30
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: TV-runtime-evidence-${{ github.run_number }}
+          path: test-results/emulator/
   overlay-retest:
     if: ${{ contains(github.event.head_commit.message, '[overlay-retest]') }}
     runs-on: ubuntu-latest
@@ -84,8 +89,8 @@ jobs:
           java-version: '17'
       - uses: actions/download-artifact@v4
         with:
-          name: Android-TV-feasibility-4
-          run-id: 38606853319
+          name: Android-TV-feasibility-8
+          run-id: 38611724115
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path: .
       - run: bash scripts/android-inspector/build.sh
