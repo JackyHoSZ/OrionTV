@@ -8,6 +8,7 @@ def adb(*args):
     return subprocess.check_output(['adb', *args])
 
 def snapshot(name):
+    (OUT / (name + '-window.txt')).write_bytes(adb('shell', 'dumpsys', 'window', 'windows'))
     (OUT / (name + '.png')).write_bytes(adb('exec-out', 'screencap', '-p'))
     result = adb('shell', 'am', 'instrument', '-w', 'com.oriontv.danmaku.inspect/.Inspector')
     (OUT / (name + '-inspection.txt')).write_bytes(result)
@@ -30,6 +31,9 @@ try:
     time.sleep(12)
     playing = snapshot('01-playing')
     assert playing['loaded'] and playing['playing'] and playing['position'] > 1000, playing
+    # Re-establish physical TV focus after the separate accessibility inspector disconnects.
+    adb('shell', 'input', 'keyevent', '22')
+    adb('shell', 'input', 'keyevent', '21')
     adb('shell', 'input', 'keyevent', '23')
     time.sleep(1)
     paused = snapshot('02-paused')
