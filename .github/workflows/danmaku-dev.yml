@@ -27,6 +27,7 @@ jobs:
         with:
           distribution: zulu
           java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
       - name: Generate authorized synthetic video
         run: |
           sudo apt-get update -qq
@@ -40,7 +41,7 @@ jobs:
       - name: Build self-contained native test APK
         run: |
           cd android
-          ./gradlew assembleRelease -PreactNativeArchitectures=x86 --console=plain
+          ./gradlew assembleRelease -PreactNativeArchitectures=x86 '-Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1024m' --max-workers=2 --console=plain
           cd ..
           mkdir -p artifacts
           cp android/app/build/outputs/apk/release/app-release.apk artifacts/OrionTV-Danmaku-e2e.apk
