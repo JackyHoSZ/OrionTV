@@ -24,6 +24,13 @@ jobs:
           node-version: 18
           cache: yarn
       - run: yarn install --frozen-lockfile
+      - name: TypeScript, lint, unit tests and scheduling benchmark
+        run: |
+          mkdir -p test-results
+          yarn typecheck
+          yarn eslint . --ext .ts,.tsx
+          yarn jest --ci --runInBand --json --outputFile=test-results/jest.json
+          node scripts/danmaku-benchmark.cjs
       - uses: actions/setup-java@v4
         with:
           distribution: zulu

@@ -18,6 +18,7 @@ interface PlayerState {
   currentEpisodeIndex: number;
   episodes: Episode[];
   status: AVPlaybackStatus | null;
+  shouldPlay: boolean;
   isLoading: boolean;
   showControls: boolean;
   showEpisodeModal: boolean;
@@ -65,6 +66,7 @@ const usePlayerStore = create<PlayerState>((set, get) => ({
   episodes: [],
   currentEpisodeIndex: -1,
   status: null,
+  shouldPlay: true,
   isLoading: true,
   showControls: false,
   showEpisodeModal: false,
@@ -210,13 +212,14 @@ const usePlayerStore = create<PlayerState>((set, get) => ({
       const episodesMappingStart = performance.now();
       const mappedEpisodes = episodes.map((ep, index) => ({
         url: ep,
-        title: `第 ${index + 1} 集`,
+        title: detail?.episodes_titles?.[index] || `第 ${index + 1} 集`,
       }));
       const episodesMappingEnd = performance.now();
       logger.info(`[PERF] Episodes mapping (${episodes.length} episodes) took ${(episodesMappingEnd - episodesMappingStart).toFixed(2)}ms`);
       
       set({
         isLoading: false,
+        shouldPlay: true,
         currentEpisodeIndex: episodeIndex,
         initialPosition: position || initialPositionFromRecord,
         playbackRate: savedPlaybackRate,
@@ -242,6 +245,8 @@ const usePlayerStore = create<PlayerState>((set, get) => ({
     if (index >= 0 && index < episodes.length) {
       set({
         currentEpisodeIndex: index,
+        shouldPlay: true,
+        status: null,
         showNextEpisodeOverlay: false,
         initialPosition: 0,
         progressPosition: 0,
@@ -257,15 +262,18 @@ const usePlayerStore = create<PlayerState>((set, get) => ({
   },
 
   togglePlayPause: async () => {
-    const { status, videoRef } = get();
+    const { status, videoRef, shouldPlay } = get();
     if (status?.isLoaded) {
+      const next=!shouldPlay;
+      set({shouldPlay:next});
       try {
-        if (status.isPlaying) {
+        if (!next) {
           await videoRef?.current?.pauseAsync();
         } else {
           await videoRef?.current?.playAsync();
         }
       } catch (error) {
+        if(get().shouldPlay===next)set({shouldPlay});
         logger.debug("Failed to toggle play/pause:", error);
         Toast.show({ type: "error", text1: "操作失败" });
       }
@@ -435,9 +443,10 @@ const usePlayerStore = create<PlayerState>((set, get) => ({
   setShowNextEpisodeOverlay: (show) => set({ showNextEpisodeOverlay: show }),
 
   setPlaybackRate: async (rate) => {
-    const { videoRef } = get();
+    const { videoRef, playbackRate:previousRate } = get();
     const detail = useDetailStore.getState().detail;
     
+    set({playbackRate:rate});
     try {
       await videoRef?.current?.setRateAsync(rate, true);
       set({ playbackRate: rate });
@@ -447,6 +456,7 @@ const usePlayerStore = create<PlayerState>((set, get) => ({
         await PlayerSettingsManager.save(detail.source, detail.id.toString(), { playbackRate: rate });
       }
     } catch (error) {
+      if(get().playbackRate===rate)set({playbackRate:previousRate});
       logger.debug("Failed to set playback rate:", error);
     }
   },
@@ -456,6 +466,7 @@ const usePlayerStore = create<PlayerState>((set, get) => ({
       episodes: [],
       currentEpisodeIndex: 0,
       status: null,
+      shouldPlay: true,
       isLoading: true,
       showControls: false,
       showEpisodeModal: false,
@@ -513,7 +524,7 @@ const usePlayerStore = create<PlayerState>((set, get) => ({
       if (newEpisodes.length > currentEpisodeIndex) {
         const mappedEpisodes = newEpisodes.map((ep, index) => ({
           url: ep,
-          title: `第 ${index + 1} 集`,
+          title: fallbackSource.episodes_titles?.[index] || `第 ${index + 1} 集`,
         }));
         
         set({

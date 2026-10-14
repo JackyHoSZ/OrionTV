@@ -16,6 +16,7 @@ import { UpdateModal } from "@/components/UpdateModal";
 import { UPDATE_CONFIG } from "@/constants/UpdateConfig";
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 import Logger from '@/utils/Logger';
+import {useDanmakuStore} from '@/stores/danmakuStore';
 
 const logger = Logger.withTag('RootLayout');
 
@@ -39,6 +40,7 @@ export default function RootLayout() {
     };
     initializeApp();
     initUpdateStore(); // 初始化更新存储
+    if(Platform.OS==='android'&&Platform.isTV)void useDanmakuStore.getState().hydrate();
   }, [loadSettings]);
 
   useEffect(() => {
@@ -93,6 +95,7 @@ export default function RootLayout() {
             <Stack.Screen name="settings" options={{ headerShown: false }} />
             <Stack.Screen name="favorites" options={{ headerShown: false }} />
             <Stack.Screen name="+not-found" />
+            <Stack.Screen name="danmaku-test" options={{headerShown:false}}/>
           </Stack>
         </View>
         <Toast />

@@ -21,6 +21,7 @@ import ResponsiveNavigation from "@/components/navigation/ResponsiveNavigation";
 import ResponsiveHeader from "@/components/navigation/ResponsiveHeader";
 import { DeviceUtils } from "@/utils/DeviceUtils";
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import {DanmakuConnection} from '@/components/danmaku/DanmakuConnection';
 
 type SectionItem = {
   component: React.ReactElement;
@@ -159,6 +160,7 @@ export default function SettingsScreen() {
   //   },
   // ].filter(Boolean);
   const rawSections = [
+    Platform.OS==='android'&&Platform.isTV&&{component:<DanmakuConnection/>,key:'danmaku'},
     deviceType !== "mobile" && {
       component: (
         <RemoteInputSection

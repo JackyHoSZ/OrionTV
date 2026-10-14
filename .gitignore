@@ -26,3 +26,7 @@ web/**
 .roomodes
 yarn-errors.log
 coverage/
+# Danmaku development artifacts and generated native fixture
+test-results/
+artifacts/
+assets/danmaku-test.mp4

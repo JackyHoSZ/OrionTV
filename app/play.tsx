@@ -18,6 +18,9 @@ import usePlayerStore, { selectCurrentEpisode } from "@/stores/playerStore";
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 import { useVideoHandlers } from "@/hooks/useVideoHandlers";
 import Logger from '@/utils/Logger';
+import {PlayerDanmaku} from '@/components/danmaku/PlayerDanmaku';
+
+const NativeVideo=memo(Video);
 
 const logger = Logger.withTag('PlayScreen');
 
@@ -164,6 +167,7 @@ export default function PlayScreen() {
   useEffect(() => {
     const handleAppStateChange = (nextAppState: AppStateStatus) => {
       if (nextAppState === "background" || nextAppState === "inactive") {
+        usePlayerStore.setState({shouldPlay:false});
         videoRef.current?.pauseAsync();
       }
     };
@@ -223,11 +227,12 @@ export default function PlayScreen() {
       >
         {/* 条件渲染Video组件：只有在有有效URL时才渲染 */}
         {currentEpisode?.url ? (
-          <Video ref={videoRef} style={dynamicStyles.videoPlayer} {...videoProps} />
+          <NativeVideo ref={videoRef} style={dynamicStyles.videoPlayer} {...videoProps} />
         ) : (
           <LoadingContainer style={dynamicStyles.loadingContainer} currentEpisode={currentEpisode} />
         )}
 
+        <PlayerDanmaku/>
         {showControls && deviceType === "tv" && (
           <PlayerControls showControls={showControls} setShowControls={setShowControls} />
         )}

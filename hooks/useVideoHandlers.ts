@@ -24,6 +24,7 @@ export const useVideoHandlers = ({
   deviceType,
   detail,
 }: UseVideoHandlersProps) => {
+  const shouldPlay=usePlayerStore(state=>state.shouldPlay);
   
   const onLoad = useCallback(async () => {
     console.info(`[PERF] Video onLoad - video ready to play`);
@@ -38,7 +39,8 @@ export const useVideoHandlers = ({
       
       // 2. 显式调用播放以确保自动播放
       console.info(`[AUTOPLAY] Attempting to start playback after onLoad`);
-      await videoRef.current?.playAsync();
+      if(usePlayerStore.getState().shouldPlay)await videoRef.current?.playAsync();
+      else await videoRef.current?.pauseAsync();
       console.info(`[AUTOPLAY] Auto-play successful after onLoad`);
       
       usePlayerStore.setState({ isLoading: false });
@@ -110,7 +112,7 @@ export const useVideoHandlers = ({
     onLoadStart,
     onError,
     useNativeControls: deviceType !== 'tv',
-    shouldPlay: true,
+    shouldPlay,
   }), [
     currentEpisode?.url,
     detail?.poster,
@@ -120,6 +122,7 @@ export const useVideoHandlers = ({
     onLoadStart,
     onError,
     deviceType,
+    shouldPlay,
   ]);
 
   return {
