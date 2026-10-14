@@ -62,3 +62,10 @@ describe('danmu_api protocol', () => {
     await expect(new DanmakuAPI('https://example.org','',100,fetcher(f)).search('a')).rejects.toMatchObject({code:'NETWORK'});expect(f).toHaveBeenCalledTimes(2);
   });
 });
+
+test('a malformed success envelope cannot poison the cache after a server recovers',async()=>{
+ const f=jest.fn().mockResolvedValueOnce(response({success:true,comments:'invalid'})).mockResolvedValueOnce(response({success:true,comments:[]}));
+ const api=new DanmakuAPI('https://example.org','',100,fetcher(f));
+ await expect(api.comments(1)).rejects.toMatchObject({code:'FORMAT'});
+ await expect(api.comments(1)).resolves.toMatchObject({comments:[]});expect(f).toHaveBeenCalledTimes(2);
+});

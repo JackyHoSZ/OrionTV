@@ -57,7 +57,7 @@ export default function DanmakuTestScreen(){
    <StyledButton text="正常速度" accessibilityLabel="probe-normal" onPress={()=>p.setPlaybackRate(1)}/>
    <StyledButton text="2倍速" accessibilityLabel="probe-rate" onPress={()=>p.setPlaybackRate(2)}/>
    <StyledButton text="换模拟源" accessibilityLabel="probe-source" onPress={()=>{const old=useDetailStore.getState().detail!;const episodes=old.episodes.map(url=>url+'&source=b');useDetailStore.setState({detail:{...old,source:'fixture-b',episodes}});usePlayerStore.setState({episodes:episodes.map((url,i)=>({url,title:`第${i+2}集`})),status:null,loadedVideoUrl:null});}}/>
-   <StyledButton text="模拟电影" accessibilityLabel="probe-movie" onPress={()=>{const url='http://127.0.0.1:8765/video.mp4?movie=1';useDetailStore.setState({detail:{id:2,title:'模拟电影',year:'2024',type_name:'科幻片',poster:'',source:'fixture',source_name:'授权模拟源',episodes:[url],episodes_titles:['正片']}});usePlayerStore.setState({episodes:[{url,title:'正片'}],currentEpisodeIndex:0,initialPosition:0,status:null,loadedVideoUrl:null,shouldPlay:true});}}/>
+   <StyledButton text="模拟电影" accessibilityLabel="probe-movie" onPress={()=>{const url='http://127.0.0.1:8765/hls/index.m3u8?movie=1';useDetailStore.setState({detail:{id:2,title:'模拟电影',year:'2024',type_name:'科幻片',poster:'',source:'fixture',source_name:'授权模拟源',episodes:[url],episodes_titles:['正片']}});usePlayerStore.setState({episodes:[{url,title:'正片'}],currentEpisodeIndex:0,initialPosition:0,status:null,loadedVideoUrl:null,shouldPlay:true});}}/>
    <StyledButton text="自动下一集" accessibilityLabel="probe-end" onPress={()=>void ref.current?.setPositionAsync(599000)}/>
    <StyledButton text="下一集" accessibilityLabel="probe-next" onPress={()=>p.playEpisode(p.currentEpisodeIndex?0:1)}/>
   </View>

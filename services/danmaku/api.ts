@@ -35,6 +35,13 @@ function successful(value: unknown) {
   if (data.success === false || (data.errorCode && data.errorCode !== 0)) throw new DanmakuError('FORMAT');
   return data;
 }
+function validatePayload(path:string,value:unknown):void {
+  const data=successful(value);
+  if(path.startsWith('/comment/')&&!Array.isArray(data.comments))throw new DanmakuError('FORMAT');
+  if(path.startsWith('/search/')&&!Array.isArray(data.animes))throw new DanmakuError('FORMAT');
+  if(path==='/match'&&(typeof data.isMatched!=='boolean'||!Array.isArray(data.matches)))throw new DanmakuError('FORMAT');
+  if(path.startsWith('/bangumi/')&&!Array.isArray(object(data.bangumi).episodes))throw new DanmakuError('FORMAT');
+}
 function episode(value: unknown): DanmakuMatch {
   const item = object(value);
   if (!Number.isSafeInteger(Number(item.episodeId)) || Number(item.episodeId) <= 0 || typeof item.episodeTitle !== 'string') throw new DanmakuError('FORMAT');
@@ -110,7 +117,7 @@ export class DanmakuAPI {
       flight = { controller, users: 0, promise: Promise.resolve() };
       const own = flight;
       own.promise = this.perform(path, body, controller.signal).then(value => {
-        successful(value); // A semantic API error must not poison the ten-minute success cache.
+        validatePayload(path,value); // Neither API errors nor malformed envelopes enter the success cache.
         this.cache.delete(key); this.cache.set(key, { value, expires: Date.now() + 600000 });
         while (this.cache.size > 8) this.cache.delete(this.cache.keys().next().value!);
         // Keep session comment memory bounded independently of the number of metadata entries.

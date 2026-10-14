@@ -22,6 +22,15 @@ class Handler(BaseHTTPRequestHandler):
  def do_GET(self):
   path=urllib.parse.urlsplit(self.path).path
   if path=='/health':return self.reply({'fixture':True})
+  if re.fullmatch(r'/hls/(?:index\.m3u8|segment\d+\.ts)',path):
+   file=Path('assets/danmaku-hls')/path.rsplit('/',1)[1]
+   if not file.is_file():return self.reply({},404)
+   body=file.read_bytes();playlist=path.endswith('.m3u8')
+   with Path('test-results/emulator/fixture-requests.jsonl').open('a') as log:log.write(json.dumps({'time':time.time(),'operation':'hls-playlist' if playlist else 'hls-segment','status':200,'comments':0})+'\n')
+   self.send_response(200);self.send_header('Content-Type','application/vnd.apple.mpegurl' if playlist else 'video/mp2t');self.send_header('Content-Length',str(len(body)));self.end_headers()
+   try:self.wfile.write(body)
+   except (BrokenPipeError,ConnectionResetError):pass
+   return
   if path=='/video.mp4':
    size=video.stat().st_size;start=0;end=size-1;partial=self.headers.get('Range')
    if partial:

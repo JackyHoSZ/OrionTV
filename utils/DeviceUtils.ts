@@ -1,4 +1,4 @@
-import { Platform, Dimensions } from "react-native";
+import { Dimensions } from "react-native";
 import { DeviceType } from "@/hooks/useResponsiveLayout";
 import {IS_DANMAKU_TV} from '@/constants/DanmakuBuild';
 

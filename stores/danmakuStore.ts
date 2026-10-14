@@ -74,7 +74,8 @@ export const useDanmakuStore=create<DanmakuState>((set,get)=>({
    if(saved){
     // IDs can change after a server restart. Resolve saved title/source and episode again.
     const animes=await service.search(saved.animeTitle.replace(/from\s+.*$/i,'').replace(/[【\[].*?[】\]]/g,'').replace(/[（(](?:19|20)\d{2}[)）]/g,'').trim(),own.signal);
-    const anime=animes.find(a=>a.animeTitle===saved.animeTitle);
+    const exact=animes.filter(a=>a.animeTitle===saved.animeTitle);
+    const anime=exact.length===1?exact[0]:undefined;
     if(anime){const episodes=await service.episodes(anime,own.signal);const found=episodes.filter(e=>e.episodeTitle===saved.episodeTitle);if(found.length===1){selected=found[0];reusedManual=true;}}
    }
    if(!selected){const name=matchFileName(media);if(!name){if(own.isCurrent())set({loading:false,message:'季集信息不明确，请手动搜索选择弹幕'});return;}

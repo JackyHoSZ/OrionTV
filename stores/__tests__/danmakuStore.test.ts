@@ -1,3 +1,4 @@
+import {DanmakuStorage} from '@/services/danmaku/storage';
 import {useDanmakuStore} from '../danmakuStore';
 import {DanmakuMedia} from '@/services/danmaku/types';
 const mockComments=jest.fn();
@@ -43,4 +44,14 @@ test('turning danmaku off cancels an in-flight load without affecting playback',
 test('concurrent settings edits merge after persistence rather than restoring stale fields',async()=>{
  await Promise.all([useDanmakuStore.getState().setSettings({fontSize:30}),useDanmakuStore.getState().setSettings({opacity:0.5})]);
  expect(useDanmakuStore.getState().settings).toMatchObject({fontSize:30,opacity:0.5});
+});
+
+test('an obsolete manual mapping cannot bypass the automatic duration check after fallback',async()=>{
+ const saved=jest.spyOn(DanmakuStorage,'getMatch').mockResolvedValue({animeId:9,animeTitle:'已失效来源',episodeId:9,episodeTitle:'第1集'});
+ mockComments.mockResolvedValue({comments:[{id:'wrong-length',time:1,text:'弹幕',mode:'scroll',color:'#ffffff'}],duration:120});
+ await useDanmakuStore.getState().setSettings({enabled:true,autoLoad:true});
+ await useDanmakuStore.getState().bind(media);
+ expect(useDanmakuStore.getState().comments).toEqual([]);
+ expect(useDanmakuStore.getState().message).toContain('时长差异');
+ saved.mockRestore();useDanmakuStore.getState().clear();
 });

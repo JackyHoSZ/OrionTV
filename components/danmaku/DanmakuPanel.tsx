@@ -1,4 +1,4 @@
-import React,{useEffect,useRef,useState} from 'react';
+import React,{memo,useEffect,useRef,useState} from 'react';
 import {Modal,View,Text,TextInput,ScrollView,StyleSheet,TVFocusGuideView} from 'react-native';
 import {StyledButton} from '@/components/StyledButton';
 import {useDanmakuStore} from '@/stores/danmakuStore';
@@ -12,7 +12,7 @@ function PanelInput(props:React.ComponentProps<typeof TextInput>){
  return <TextInput {...props} onFocus={event=>{setFocused(true);props.onFocus?.(event);}} onBlur={event=>{setFocused(false);props.onBlur?.(event);}} style={[props.style,focused&&{borderColor:'#2edc8c',backgroundColor:'#16342b'}]}/>;
 }
 const cycle=(values:number[],value:number)=>values[(values.indexOf(value)+1)%values.length];
-export function DanmakuPanel({context='player'}:{context?:'player'|'global'}){
+export const DanmakuPanel=memo(function DanmakuPanel({context='player'}:{context?:'player'|'global'}){
  const d=useDanmakuStore();const s=d.settings;const visible=d.panelOpen&&d.panelContext===context;
  const [tab,setTab]=useState<'settings'|'search'|'episodes'|'confirm'>('settings');
  const [keyword,setKeyword]=useState('');const [season,setSeason]=useState('');const [filter,setFilter]=useState('');
@@ -116,5 +116,5 @@ export function DanmakuPanel({context='player'}:{context?:'player'|'global'}){
    </ScrollView>
   </TVFocusGuideView></View>
  </Modal>;
-}
+});
 const styles=StyleSheet.create({backdrop:{flex:1,backgroundColor:'#0008',alignItems:'center',justifyContent:'center'},panel:{width:'92%',height:'94%',backgroundColor:'#15191f',borderRadius:12,borderColor:'#57616d',borderWidth:1},header:{padding:14,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderBottomWidth:1,borderColor:'#444'},title:{fontSize:24,color:'#fff',fontWeight:'bold'},body:{padding:18,gap:14},row:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',gap:12},label:{fontSize:20,color:'#fff',flexShrink:1},value:{minWidth:190},status:{fontSize:18,color:'#70e1a0'},hint:{fontSize:17,color:'#bdc7d1',lineHeight:25},actions:{flexDirection:'row',flexWrap:'wrap',gap:10,alignItems:'center'},input:{fontSize:20,color:'#fff',borderColor:'#81909f',borderWidth:2,borderRadius:6,padding:10,minWidth:200},result:{marginVertical:5}});

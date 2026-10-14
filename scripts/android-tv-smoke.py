@@ -1,9 +1,11 @@
 """Real TV AVD validation against credential-free API fixtures and original AV controls."""
-import os,json,pathlib,re,subprocess,time,urllib.request,xml.etree.ElementTree as ET
+import os,shlex,json,pathlib,re,subprocess,time,urllib.request,xml.etree.ElementTree as ET
 OUT=pathlib.Path('test-results/emulator');OUT.mkdir(parents=True,exist_ok=True)
 for old in OUT.iterdir():
  if old.is_file():old.unlink()
-def adb(*args):return subprocess.check_output(['adb',*args],timeout=45)
+def adb(*args):
+ if args and args[0]=='shell':args=('shell',shlex.join(args[1:]))
+ return subprocess.check_output(['adb',*args],timeout=45)
 def keys(*codes,focus=None):
  args=['shell','am','instrument','-w','-e','keys',','.join(map(str,codes))]
  if focus:args+=['-e','focus',focus]
@@ -65,6 +67,9 @@ try:
  time.sleep(1)
  assert server.poll() is None,'Fixture server exited'
  assert json.load(urllib.request.urlopen('http://127.0.0.1:8765/health'))['fixture']
+ # This TV fixture needs no Google Play. Prevent unrelated first-boot APK updates/dexopt.
+ for package in ['com.android.vending','com.google.android.gms']:
+  subprocess.run(['adb','shell','pm','disable-user','--user','0',package],check=False,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=30)
  adb('reverse','tcp:8765','tcp:8765')
  adb('install','-r','-g','test-results/inspector/inspector.apk');adb('install','-r','artifacts/OrionTV-Danmaku-e2e.apk');adb('logcat','-c')
  adb('shell','am','start','-W','-a','android.intent.action.VIEW','-d','oriontv-danmaku://danmaku-test','com.oriontv.danmaku.dev');time.sleep(14)
@@ -82,7 +87,7 @@ try:
  press('probe-rate');rate=wait_state('07-rate',lambda s:s['rate']==2)
  press('danmaku-toggle');off=wait_state('08-off',lambda s:s['playing'] and not s['enabled'] and s['active']==0 and not s['saving'])
  press('danmaku-toggle');wait_state('08a-on',lambda s:s['enabled'] and not s['saving'])
- press('danmaku-density');density=wait_state('09-density',lambda s:s['density']==4 and s['active']<=4)
+ press('danmaku-density');density=wait_state('09-density',lambda s:s['density']==4 and s['active']<=4 and not s['saving'])
  press('probe-next');time.sleep(4);episode=wait_state('10-next-episode',lambda s:s['episode']==3 and s['match']==3 and s['playing']);assert episode['position']<40000,episode
  press('probe-normal');wait_state('11-normal-rate',lambda s:s['rate']==1)
  press('danmaku-settings');wait_panel('12-settings-panel','播放弹幕设置')
@@ -110,6 +115,16 @@ try:
  press('danmaku-close');wait_state('23-custom-color-live',lambda s:s['color']=='ff6600' and not s['saving'])
  extended=os.environ.get('DANMAKU_STABILITY')=='1'
  if extended:
+  press('danmaku-settings');wait_panel('24-panel-nav','播放弹幕设置')
+  keys(22,focus='danmaku-rematch');root,_=inspect('24a-right')
+  assert any(n.get('focused')=='true' and n.get('content-desc')=='danmaku-manual' for n in root.iter('node'))
+  keys(21);root,_=inspect('24b-left')
+  assert any(n.get('focused')=='true' and n.get('content-desc')=='danmaku-rematch' for n in root.iter('node'))
+  keys(19);root,_=inspect('24c-up')
+  assert any(n.get('focused')=='true' and n.get('content-desc')=='danmaku-close' for n in root.iter('node'))
+  keys(20);root,_=inspect('24d-down')
+  assert any(n.get('focused')=='true' and n.get('content-desc') in ['danmaku-rematch','danmaku-manual'] for n in root.iter('node'))
+  keys(4);wait_state('24e-back-focus',lambda s:'danmaku-settings' in s['focus'])
   press('probe-rate125');wait_state('24-rate125',lambda s:s['rate']==1.25)
   press('probe-rate150');wait_state('25-rate150',lambda s:s['rate']==1.5)
   press('probe-normal');wait_state('26-rate1',lambda s:s['rate']==1)
@@ -127,7 +142,9 @@ try:
   press('probe-next');wait_state('31-episode2',lambda s:s['loaded'] and s['episode']==2 and s['match']==2 and s['playing'])
   press('probe-end');wait_state('32-auto-next',lambda s:s['loaded'] and s['episode']==3 and s['match']==3 and s['playing'] and s['position']<40000,timeout=90)
   press('probe-movie');wait_state('33-movie',lambda s:s['loaded'] and s['match']==4 and s['playing'] and s['comments']==10000)
- (OUT/'result.json').write_text(json.dumps({'passed':True,'stage':'D' if extended else 'C','rate125And150':extended,'sourceChange':extended,'apiFailureDoesNotBlockVideo':extended,'automaticNextEpisode':extended,'nativeMovieMatch':extended,'nativeVideo':True,'nativeAPI':True,'comments':10000,'pause':True,'resume':True,'seek':True,'rewind':True,'rate2':True,'density':True,'toggle':True,'episode':True,'panel':True,'manualMatch':True,'persistentSettings':True,'perSourceOffset':True,'focusReturn':True,'manualMappingReusedWithoutAutoMatch':True,'globalConnectionTest':True,'customColor':True,'hardware':'cloud Android TV API29 x86, not Dangbei D5X'},indent=2))
+  hls=[json.loads(line)['operation'] for line in (OUT/'fixture-requests.jsonl').read_text().splitlines()]
+  assert 'hls-playlist' in hls and 'hls-segment' in hls,hls
+ (OUT/'result.json').write_text(json.dumps({'passed':True,'stage':'D' if extended else 'C','rate125And150':extended,'sourceChange':extended,'apiFailureDoesNotBlockVideo':extended,'automaticNextEpisode':extended,'nativeMovieMatch':extended,'nativeHLS':extended,'directionalFocusAndBack':extended,'nativeVideo':True,'nativeAPI':True,'comments':10000,'pause':True,'resume':True,'seek':True,'rewind':True,'rate2':True,'density':True,'toggle':True,'episode':True,'panel':True,'manualMatch':True,'persistentSettings':True,'perSourceOffset':True,'focusReturn':True,'manualMappingReusedWithoutAutoMatch':True,'globalConnectionTest':True,'customColor':True,'hardware':'cloud Android TV API29 x86, not Dangbei D5X'},indent=2))
 finally:
  (OUT/'failure-or-final.png').write_bytes(adb('exec-out','screencap','-p'));(OUT/'logcat.txt').write_bytes(adb('logcat','-d'))
  try:
@@ -135,7 +152,7 @@ finally:
   pid=adb('shell','pidof','com.oriontv.danmaku.dev').decode().strip()
   if pid:
    adb('shell','kill','-3',pid);time.sleep(2)
-   (OUT/'java-threads.txt').write_bytes(adb('shell','cat','/data/anr/*'))
+   (OUT/'java-threads.txt').write_bytes(adb('shell','sh','-c','cat /data/anr/*'))
  except Exception:pass
  (OUT/'gfxinfo.txt').write_bytes(adb('shell','dumpsys','gfxinfo','com.oriontv.danmaku.dev','framestats'))
  (OUT/'meminfo.txt').write_bytes(adb('shell','dumpsys','meminfo','com.oriontv.danmaku.dev'))
