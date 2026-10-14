@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import { Animated, Easing, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { AVPlaybackStatus } from 'expo-av';
 
@@ -6,6 +6,7 @@ import { AVPlaybackStatus } from 'expo-av';
 export function OverlayProbe({ status }: { status: AVPlaybackStatus | null }) {
   const { width } = useWindowDimensions();
   const phase = useRef(new Animated.Value(0)).current;
+  const translateX=useMemo(()=>phase.interpolate({inputRange:[0,8],outputRange:[width,-450]}),[phase,width]);
   const loaded = status?.isLoaded;
   const position = loaded ? status.positionMillis : 0;
   const playing = loaded && status.isPlaying && !status.isBuffering;
@@ -30,7 +31,7 @@ export function OverlayProbe({ status }: { status: AVPlaybackStatus | null }) {
       {[0, 1, 2].map((lane) => (
         <Animated.Text key={lane} style={[styles.comment, {
           top: 50 + lane * 50,
-          transform: [{ translateX: phase.interpolate({ inputRange: [0, 8], outputRange: [width, -450] }) }],
+          transform: [{ translateX }],
         }]}>
           {`OVERLAY ${lane + 1} · 弹幕覆盖验证`}
         </Animated.Text>

@@ -1,8 +1,14 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, memo, forwardRef } from 'react';
 import { Text, View, StyleSheet, useTVEventHandler, Platform } from 'react-native';
 import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 import { StyledButton } from '@/components/StyledButton';
 import { OverlayProbe } from '@/components/danmaku/OverlayProbe';
+
+const ProbeVideo=memo(forwardRef<Video,{shouldPlay:boolean;onStatus:(status:AVPlaybackStatus)=>void}>(function ProbeVideo({shouldPlay,onStatus},ref){
+ return <Video ref={ref} source={require('../assets/danmaku-test.mp4')} style={StyleSheet.absoluteFill}
+  resizeMode={ResizeMode.CONTAIN} shouldPlay={shouldPlay} isLooping={false} useNativeControls={false}
+  progressUpdateIntervalMillis={250} onPlaybackStatusUpdate={onStatus}/>;
+}));
 
 /** Only the CI APK enables this isolated, credential-free native playback fixture. */
 export default function DanmakuTestScreen() {
@@ -16,9 +22,7 @@ export default function DanmakuTestScreen() {
   if (process.env.EXPO_PUBLIC_DANMAKU_E2E !== '1') return <Text>测试入口未启用</Text>;
   const loaded = status?.isLoaded;
   return <View style={styles.screen}>
-    <Video ref={ref} source={require('../assets/danmaku-test.mp4')}
-      style={StyleSheet.absoluteFill} resizeMode={ResizeMode.CONTAIN} shouldPlay={shouldPlay}
-      useNativeControls={false} progressUpdateIntervalMillis={250} onPlaybackStatusUpdate={setStatus} />
+    <ProbeVideo ref={ref} shouldPlay={shouldPlay} onStatus={setStatus}/>
     <OverlayProbe status={status} />
     <Text style={styles.status} accessibilityLabel={`PROBE loaded=${!!loaded} playing=${loaded && status.isPlaying} position=${loaded ? status.positionMillis : 0} commands=${commands} tv=${Platform.isTV} remote=${remote} rpc=${rpc}`}>
       {`PROBE loaded=${!!loaded} playing=${loaded && status.isPlaying} position=${loaded ? status.positionMillis : 0} commands=${commands} tv=${Platform.isTV} remote=${remote} rpc=${rpc}`}

@@ -35,12 +35,13 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y ffmpeg
-          ffmpeg -y -f lavfi -i testsrc2=size=1280x720:rate=25 -f lavfi -i sine=frequency=440 -t 60 -c:v libx264 -preset ultrafast -pix_fmt yuv420p -c:a aac -shortest assets/danmaku-test.mp4
+          ffmpeg -y -f lavfi -i testsrc2=size=960x540:rate=15 -f lavfi -i sine=frequency=440 -t 600 -c:v libx264 -preset veryfast -crf 36 -pix_fmt yuv420p -c:a aac -shortest assets/danmaku-test.mp4
       - name: Generate TV native project (official Expo pipeline)
         run: |
           yarn expo prebuild --clean --platform android --no-install
           yarn copy-config
           python3 scripts/prepare-tv-native.py
+          python3 scripts/native-av-diagnostics.py
       - name: Build self-contained native test APK
         run: |
           cd android
