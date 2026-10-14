@@ -15,8 +15,16 @@ Mac 仅运行 Node/Python/OpenSSL 和 GitHub CLI。Android SDK、JDK 17、Gradle
 3. API29 / x86 / tv_1080p Android TV AVD 安装应用，通过真实原生 Video 播放自行生成的 H.264/AAC 测试图视频。
 4. 测试服务器模拟匹配、作品/剧集与评论，通过 ADB 本地端口映射访问，不使用真实账号或 Token。
 5. 自动发送 DPAD 按下/释放事件，读取原生可访问性状态，并保存截图、XML、JSON、logcat、内存信息和 API 操作摘要。
-6. 提交含 `[delivery]`，或手动 Run workflow 勾选 `build_apk` 时，只有原生运行测试成功才执行 ARM32+ARM64 交付构建。
+6. 推送提交含 `[delivery]` 时，只有原生运行测试成功才执行 ARM32+ARM64 交付构建。工作流已注册后也可通过 GitHub CLI 对本分支触发 `build_apk=true`；网页 Run workflow 按钮通常要求工作流先进入默认分支，不能保证本开发分支直接显示此按钮。
 7. `OrionTV-Danmaku-ARM-构建号` Artifact 包含 APK、metadata.json、SHA256SUMS、签名和 Manifest 验证信息。下载需要登录有仓库访问权限的 GitHub 账号。
+
+更新构建可由 Codex 执行：
+
+```sh
+gh workflow run danmaku-dev.yml --repo JackyHoSZ/OrionTV --ref feature/android-tv-danmaku -f build_apk=true
+```
+
+若当前账号/界面不允许手动触发，推送包含 `[delivery]` 的提交即可，不必修改默认分支。有关分支与手动触发的要求见 [GitHub 官方说明](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#workflow_dispatch)。纯 JS 的 `[overlay-retest]` 使用保留的原生基线 Artifact；到期或修改原生依赖后使用完整构建，不复用旧基线。
 
 个人签名的 PKCS12 和密码保存在仓库 Actions Secrets：`ORION_SIGNING_P12`、`ORION_SIGNING_PASSWORD`。临时密钥在签名后删除，不进入 Git 或 Artifact。后续保持包名与签名不变，并递增 versionCode，即可覆盖升级。签名丢失或更换时不能保留数据直接覆盖安装。
 
@@ -26,8 +34,8 @@ Mac 仅运行 Node/Python/OpenSSL 和 GitHub CLI。Android SDK、JDK 17、Gradle
 |---|---|
 | A | [运行 38626200453](https://github.com/JackyHoSZ/OrionTV/actions/runs/38626200453) 成功：真实视频、三条覆盖、遥控器暂停/恢复/快进；暂停两次位置均 39103ms，覆盖坐标相同 |
 | B | [运行 38638735218](https://github.com/JackyHoSZ/OrionTV/actions/runs/38638735218) 成功：原控制栏、原生 API 10000 条、暂停稳定、暂停时 ±10 秒、2 倍速、开关/保存、密度和切集；下一集实际 match=3、同屏≤4 |
-| C | 完整面板、手动匹配、单集偏移、焦点恢复、重启持久化：等待最新云端结果，尚不标记通过 |
-| D | 100/1000/3000/10000 数据的解析/索引/调度/Node 内存基准与错误/取消测试已运行；完整最终回归结果待补充 |
+| C | [运行 38646815556](https://github.com/JackyHoSZ/OrionTV/actions/runs/38646815556) 成功：完整面板、手动选集、单集/源偏移、焦点恢复、重启后复用映射、连接测试与自定义颜色 |
+| D | 本地 122 项测试通过；100/1000/3000/10000 调度基准通过。额外原生方向键、倍速、换源、故障降级、自动切集、电影/HLS 回归等待最终云端结果 |
 | E | 签名交付构建由测试门槛控制；最终 Artifact 与大小待生成后补充 |
 
 真实 VPS 只读验证：庆余年第二季第 2 集匹配成功，读取 40,058 条评论、2730 秒；电影“流浪地球(2019)”匹配成功。手动搜索返回四个来源，360 与腾讯作品列表均读取 36 个实际剧集。没有把真实查询 Token 上传到 CI。

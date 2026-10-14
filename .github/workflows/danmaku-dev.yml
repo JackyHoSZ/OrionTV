@@ -21,6 +21,7 @@ jobs:
     env:
       EXPO_TV: '1'
       EXPO_PUBLIC_DANMAKU_E2E: '1'
+      DANMAKU_STABILITY: '1'
       ORION_BUILD_NUMBER: ${{ github.run_number }}
     steps:
       - uses: actions/checkout@v4
@@ -61,6 +62,13 @@ jobs:
           cd ..
           mkdir -p artifacts
           cp android/app/build/outputs/apk/release/app-release.apk artifacts/OrionTV-Danmaku-e2e.apk
+      - name: Prepare authorized HLS stability fixture
+        run: |
+          if ! command -v ffmpeg >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y ffmpeg
+          fi
+          python3 scripts/generate-hls-fixture.py
       - run: bash scripts/android-inspector/build.sh
       - name: Enable KVM for Android TV
         run: |
@@ -100,6 +108,7 @@ jobs:
     env:
       EXPO_TV: '1'
       EXPO_PUBLIC_DANMAKU_E2E: '1'
+      DANMAKU_STABILITY: '1'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -133,6 +142,13 @@ jobs:
         env:
           ORION_SIGNING_P12: ${{ secrets.ORION_SIGNING_P12 }}
           ORION_SIGNING_PASSWORD: ${{ secrets.ORION_SIGNING_PASSWORD }}
+      - name: Prepare authorized HLS stability fixture
+        run: |
+          if ! command -v ffmpeg >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y ffmpeg
+          fi
+          python3 scripts/generate-hls-fixture.py
       - run: bash scripts/android-inspector/build.sh
       - name: Enable KVM
         run: |

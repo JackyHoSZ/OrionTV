@@ -8,7 +8,8 @@ with zipfile.ZipFile(video_apk) as z:
  videos=[n for n in z.namelist() if n.endswith('.mp4')]
  assert len(videos)==1
  pathlib.Path('assets/danmaku-test.mp4').write_bytes(z.read(videos[0]))
-subprocess.run(['yarn','expo','export','--platform','android','--output-dir','test-results/rebundle'],check=True)
+export_env={k:v for k,v in os.environ.items() if k not in {'ORION_SIGNING_P12','ORION_SIGNING_PASSWORD'}}
+subprocess.run(['yarn','expo','export','--platform','android','--output-dir','test-results/rebundle'],env=export_env,check=True)
 bundles=list(pathlib.Path('test-results/rebundle/_expo/static/js/android').glob('*.js'))+list(pathlib.Path('test-results/rebundle/_expo/static/js/android').glob('*.hbc'))
 assert len(bundles)==1,bundles
 patched=apk.with_name('patched-unsigned.apk')

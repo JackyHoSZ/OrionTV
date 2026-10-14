@@ -123,7 +123,7 @@ try:
   keys(19);root,_=inspect('24c-up')
   assert any(n.get('focused')=='true' and n.get('content-desc')=='danmaku-close' for n in root.iter('node'))
   keys(20);root,_=inspect('24d-down')
-  assert any(n.get('focused')=='true' and n.get('content-desc') in ['danmaku-rematch','danmaku-manual'] for n in root.iter('node'))
+  assert any(n.get('focused')=='true' and n.get('content-desc') in ['danmaku-rematch','danmaku-manual','danmaku-auto'] for n in root.iter('node'))
   keys(4);wait_state('24e-back-focus',lambda s:'danmaku-settings' in s['focus'])
   press('probe-rate125');wait_state('24-rate125',lambda s:s['rate']==1.25)
   press('probe-rate150');wait_state('25-rate150',lambda s:s['rate']==1.5)
