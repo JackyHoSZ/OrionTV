@@ -11,6 +11,7 @@ export default function DanmakuTestScreen() {
   const [shouldPlay, setShouldPlay] = useState(true);
   const [commands, setCommands] = useState(0);
   const [remote, setRemote] = useState('none');
+  const [rpc, setRpc] = useState('none');
   useTVEventHandler(event => { if (['select','left','right','up','down'].includes(event.eventType)) setRemote(event.eventType+':'+event.eventKeyAction); });
   if (process.env.EXPO_PUBLIC_DANMAKU_E2E !== '1') return <Text>测试入口未启用</Text>;
   const loaded = status?.isLoaded;
@@ -19,18 +20,20 @@ export default function DanmakuTestScreen() {
       style={StyleSheet.absoluteFill} resizeMode={ResizeMode.CONTAIN} shouldPlay={shouldPlay} isLooping
       useNativeControls={false} progressUpdateIntervalMillis={250} onPlaybackStatusUpdate={setStatus} />
     <OverlayProbe status={status} />
-    <Text style={styles.status} accessibilityLabel={`PROBE loaded=${!!loaded} playing=${loaded && status.isPlaying} position=${loaded ? status.positionMillis : 0} commands=${commands} tv=${Platform.isTV} remote=${remote}`}>
-      {`PROBE loaded=${!!loaded} playing=${loaded && status.isPlaying} position=${loaded ? status.positionMillis : 0} commands=${commands} tv=${Platform.isTV} remote=${remote}`}
+    <Text style={styles.status} accessibilityLabel={`PROBE loaded=${!!loaded} playing=${loaded && status.isPlaying} position=${loaded ? status.positionMillis : 0} commands=${commands} tv=${Platform.isTV} remote=${remote} rpc=${rpc}`}>
+      {`PROBE loaded=${!!loaded} playing=${loaded && status.isPlaying} position=${loaded ? status.positionMillis : 0} commands=${commands} tv=${Platform.isTV} remote=${remote} rpc=${rpc}`}
     </Text>
     <View style={styles.controls}>
       <StyledButton text="暂停 / 继续" accessibilityLabel="probe-pause" hasTVPreferredFocus
         onPress={async () => {
           setCommands(n=>n+1);
-          const current=await ref.current?.getStatusAsync();
-          if(current?.isLoaded){
-            const next=current.isPlaying?await ref.current?.pauseAsync():await ref.current?.playAsync();
-            if(next?.isLoaded)setShouldPlay(next.shouldPlay);
-          }
+          try {
+            const current=await ref.current?.getStatusAsync();
+            if(current?.isLoaded){
+              const next=current.shouldPlay?await ref.current?.pauseAsync():await ref.current?.playAsync();
+              if(next?.isLoaded){setShouldPlay(next.shouldPlay);setRpc(`before=${current.shouldPlay}/${current.isPlaying};after=${next.shouldPlay}/${next.isPlaying}`);}
+            }
+          } catch { setRpc('AV_ERROR'); }
         }} />
       <StyledButton text="快进 10 秒" accessibilityLabel="probe-seek"
         onPress={() => loaded && ref.current?.setPositionAsync(status.positionMillis + 10000)} />
