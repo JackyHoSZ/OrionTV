@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   native-feasibility:
-    if: ${{ !contains(github.event.head_commit.message, '[overlay-retest]') }}
+    if: ${{ !contains(github.event.head_commit.message, '[overlay-retest]') && !contains(github.event.head_commit.message, '[acceptance]') }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
@@ -102,7 +102,7 @@ jobs:
           name: TV-runtime-evidence-${{ github.run_number }}
           path: test-results/emulator/
   overlay-retest:
-    if: ${{ contains(github.event.head_commit.message, '[overlay-retest]') }}
+    if: ${{ contains(github.event.head_commit.message, '[overlay-retest]') && !contains(github.event.head_commit.message, '[acceptance]') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -226,4 +226,88 @@ jobs:
         with:
           name: OrionTV-Danmaku-ARM-${{ github.run_number }}
           path: delivery/
+          retention-days: 90
+
+  production-acceptance:
+    if: ${{ contains(github.event.head_commit.message, '[acceptance]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      EXPO_TV: '1'
+      EXPO_PUBLIC_DANMAKU_E2E: '0'
+      NODE_ENV: production
+      ORION_ACCEPTANCE_UNIVERSAL: '1'
+      DANMAKU_STABILITY: '1'
+      ORION_BUILD_NUMBER: ${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: yarn
+      - run: yarn install --frozen-lockfile --production=false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
+      - name: Build production universal APK (same bytes for AVD and ARM delivery)
+        run: |
+          echo "ORION_BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+          yarn expo prebuild --clean --platform android --no-install
+          yarn copy-config
+          python3 scripts/prepare-tv-native.py
+          cd android
+          ./gradlew assembleRelease -PreactNativeArchitectures=armeabi-v7a,arm64-v8a,x86,x86_64 '-Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1024m' --max-workers=2 --console=plain
+      - name: Sign and verify production artifact (test route disabled)
+        run: python3 scripts/sign-user-apk.py
+        env:
+          ORION_SIGNING_P12: ${{ secrets.ORION_SIGNING_P12 }}
+          ORION_SIGNING_PASSWORD: ${{ secrets.ORION_SIGNING_PASSWORD }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OrionTV-production-APK-${{ github.run_number }}
+          path: delivery/
+          retention-days: 90
+      - name: Prepare legal synthetic video and external inspector
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg python3-pil
+          ffmpeg -hide_banner -loglevel error -y -f lavfi -i testsrc2=size=960x540:rate=15 -f lavfi -i sine=frequency=440 -vf 'drawbox=x=0:y=0:w=iw:h=ih*0.55:color=0x18222c:t=fill' -t 600 -c:v libx264 -preset veryfast -crf 36 -pix_fmt yuv420p -c:a aac -shortest assets/danmaku-test.mp4
+          python3 scripts/generate-hls-fixture.py
+          bash scripts/android-inspector/build.sh
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Run actual production APK on Android TV and record ADB video
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          ORION_ACCEPTANCE_DANMU_TOKEN: ${{ secrets.ORION_ACCEPTANCE_DANMU_TOKEN }}
+        with:
+          api-level: 29
+          target: android-tv
+          profile: tv_1080p
+          arch: x86
+          cores: 4
+          ram-size: 2048M
+          heap-size: 256M
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: python3 scripts/android-tv-acceptance.py
+      - name: Check videos and redact upload boundary
+        id: artifact-safety
+        if: always()
+        env:
+          ORION_ACCEPTANCE_DANMU_TOKEN: ${{ secrets.ORION_ACCEPTANCE_DANMU_TOKEN }}
+        run: |
+          python3 scripts/acceptance-package.py
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() && steps.artifact-safety.outcome == 'success' }}
+        with:
+          name: OrionTV-production-acceptance-${{ github.run_number }}
+          path: test-results/acceptance/
           retention-days: 90

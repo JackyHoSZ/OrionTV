@@ -55,4 +55,4 @@ class Handler(BaseHTTPRequestHandler):
   if path=='/api/v2/search/anime':return self.reply({'success':True,'animes':[{'animeId':1,'animeTitle':'模拟剧第二季(2024) from fixture','source':'fixture'}]})
   if path=='/api/v2/bangumi/1':return self.reply({'success':True,'bangumi':{'episodes':[{'episodeId':n,'episodeTitle':f'第{n}集'} for n in [2,3]]}})
   self.reply({},404)
-ThreadingHTTPServer(('0.0.0.0',8765),Handler).serve_forever()
+if __name__=='__main__':ThreadingHTTPServer(('0.0.0.0',8765),Handler).serve_forever()

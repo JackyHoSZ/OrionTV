@@ -28,6 +28,10 @@ public class Inspector extends Instrumentation {
         AccessibilityNodeInfo root=root(automation);
         AccessibilityNodeInfo target=find(root,focus);
         if(target==null)throw new IllegalStateException("TARGET_NOT_FOUND");
+        if(text==null){
+          while(!target.isFocusable()&&target.getParent()!=null)target=target.getParent();
+          target.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SHOW_ON_SCREEN.getId());
+        }
         target.refresh();
         if(text!=null){Bundle arguments=new Bundle();arguments.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,text);
           if(!target.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT,arguments))throw new IllegalStateException("TEXT_REFUSED");
@@ -71,7 +75,7 @@ public class Inspector extends Instrumentation {
   }
   private AccessibilityNodeInfo findDeep(AccessibilityNodeInfo node,String label){
     if(node==null)return null;
-    if(label.contentEquals(node.getContentDescription()==null?"":node.getContentDescription()))return node;
+    if(label.contentEquals(node.getContentDescription()==null?"":node.getContentDescription())||label.contentEquals(node.getText()==null?"":node.getText()))return node;
     if(node.getClassName()!=null&&node.getClassName().toString().startsWith("com.horcrux.svg"))return null;
     for(int i=0;i<node.getChildCount();i++){AccessibilityNodeInfo result=findDeep(node.getChild(i),label);if(result!=null)return result;}
     return null;
