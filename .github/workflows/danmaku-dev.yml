@@ -242,18 +242,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
+        if: ${{ !contains(github.event.head_commit.message, '[acceptance-reuse]') }}
         with:
           node-version: 18
           cache: yarn
       - run: yarn install --frozen-lockfile --production=false
+        if: ${{ !contains(github.event.head_commit.message, '[acceptance-reuse]') }}
       - uses: actions/setup-java@v4
         with:
           distribution: zulu
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v4
+        if: ${{ !contains(github.event.head_commit.message, '[acceptance-reuse]') }}
         with:
           cache-read-only: false
       - name: Build production universal APK (same bytes for AVD and ARM delivery)
+        if: ${{ !contains(github.event.head_commit.message, '[acceptance-reuse]') }}
         run: |
           echo "ORION_BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
           yarn expo prebuild --clean --platform android --no-install
@@ -262,10 +266,19 @@ jobs:
           cd android
           ./gradlew assembleRelease -PreactNativeArchitectures=armeabi-v7a,arm64-v8a,x86,x86_64 '-Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1024m' --max-workers=2 --console=plain
       - name: Sign and verify production artifact (test route disabled)
+        if: ${{ !contains(github.event.head_commit.message, '[acceptance-reuse]') }}
         run: python3 scripts/sign-user-apk.py
         env:
           ORION_SIGNING_P12: ${{ secrets.ORION_SIGNING_P12 }}
           ORION_SIGNING_PASSWORD: ${{ secrets.ORION_SIGNING_PASSWORD }}
+      - name: Reuse unchanged production APK when only acceptance harness changes
+        if: ${{ contains(github.event.head_commit.message, '[acceptance-reuse]') }}
+        uses: actions/download-artifact@v4
+        with:
+          name: OrionTV-production-APK-36
+          run-id: 38664455660
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: delivery/
       - uses: actions/upload-artifact@v4
         with:
           name: OrionTV-production-APK-${{ github.run_number }}

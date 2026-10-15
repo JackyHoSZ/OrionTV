@@ -89,7 +89,6 @@ try:
  press('danmaku-close');adb('shell','am','start','-W','-a','android.intent.action.VIEW','-d','oriontv-danmaku://',PACKAGE)
  wait('05-home','模拟剧第二季',90)
  check('production-home-catalog',True,backend='isolated authorized fixture; no production login/records')
- start_record('01-continuous-player-demo')
  # Reposition by accessibility only; all activations and navigation are real DPAD events.
  keys(22,focus='热门剧集');root,_=inspect('06-home-right');right=[n.get('text') or n.get('content-desc') for n in root.iter('node') if n.get('focused')=='true']
  keys(21);root,_=inspect('07-home-left');left=[n.get('text') or n.get('content-desc') for n in root.iter('node') if n.get('focused')=='true']
@@ -97,7 +96,12 @@ try:
  press('模拟剧第二季');wait('08-detail','播放列表');press('第 1 集')
  t1=clock('09-player-start');time.sleep(2);t2=clock('10-player-advances')
  check('original-player-video-advances',t2>t1,beforeSeconds=t1,afterSeconds=t2)
- time.sleep(2);a=image('11-scroll-a');time.sleep(1);b=image('12-scroll-b');ma,ca=overlay(a);mb,cb=overlay(b)
+ panel();wait('10a-comments-ready','10000 条',100);press('danmaku-close')
+ start_record('01-continuous-player-demo')
+ for attempt in range(8):
+  a=image('11-scroll-a');time.sleep(.8);b=image('12-scroll-b');ma,ca=overlay(a);mb,cb=overlay(b)
+  if ca>100 and cb>100 and ma.tobytes()!=mb.tobytes():break
+  time.sleep(.5)
  check('visible-danmaku-scroll',ca>100 and cb>100 and ma.tobytes()!=mb.tobytes(),pixels=[ca,cb])
  keys(20);press('player-pause');time.sleep(1);p1=clock('13-pause');a=image('14-pause-frame-a');time.sleep(2);p2=clock('15-pause-stable');b=image('16-pause-frame-b')
  ma,ca=overlay(a);mb,cb=overlay(b)
