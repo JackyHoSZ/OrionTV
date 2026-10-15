@@ -107,7 +107,9 @@ try:
  ma,ca=overlay(a);mb,cb=overlay(b)
  check('pause-video-and-danmaku',p1==p2 and ca>100 and ma.tobytes()==mb.tobytes(),beforeSeconds=p1,afterSeconds=p2,pixels=[ca,cb])
  press('player-pause');time.sleep(2);p3=clock('17-resume');check('resume-video',p3>p2,beforeSeconds=p2,afterSeconds=p3)
- keys(4);keys(22);time.sleep(1);seek=clock('18-seek-right');check('remote-fast-forward',seek>=p3+18,beforeSeconds=p3,afterSeconds=seek)
+ # Wait for the ordinary five-second controls auto-hide; Back can legitimately
+ # navigate to detail if controls have already disappeared while taking a shot.
+ time.sleep(6);image('17a-controls-hidden');keys(22);time.sleep(1);seek=clock('18-seek-right');check('remote-fast-forward',seek>=p3+24,beforeSeconds=p3,afterSeconds=seek)
  # Speed button has no ID in upstream; it is five DPAD steps from the pause control.
  keys(22,22,22,22,focus='player-pause');root,text=inspect('19-speed-button');keys(23);wait('20-speed-panel','播放速度')
  press('2x');time.sleep(1);r1=clock('21-rate2-start');time.sleep(3);r2=clock('22-rate2-end');check('native-rate2-via-original-panel',r2-r1>=5,beforeSeconds=r1,afterSeconds=r2)
